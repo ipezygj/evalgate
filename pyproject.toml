@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evalgate"
+version = "0.1.0"
+description = "Dependency-free statistical checks for AI eval claims: multiple-comparisons correction, judge-bias tests, and leave-one-out fragility."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Ilpo Vaatainen" }]
+keywords = [
+    "llm", "evaluation", "benchmark", "judge-bias", "statistics",
+    "multiple-comparisons", "mlops", "reproducibility", "eval",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Science/Research",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://ipezygj.github.io/eval-audit-site/"
+Book = "https://leanpub.com/measurednotbelieved"
+Source = "https://github.com/ipezygj/evalgate"
+
+[project.scripts]
+evalgate = "evalgate.cli:main"
+
+[tool.setuptools]
+packages = ["evalgate"]
