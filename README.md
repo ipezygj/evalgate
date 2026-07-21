@@ -4,10 +4,10 @@
 
 Most benchmark headlines overstate themselves in one of a few nameable ways. `evalgate` is three tiny, dependency-free checks, one per failure mode — the same checks behind a set of [independent eval-integrity audits](https://ipezygj.github.io/eval-audit-site/) that caught these mistakes in published work.
 
-Pure Python, zero dependencies (`pip install evalgate`), runs anywhere.
+Pure Python, zero dependencies, runs anywhere.
 
 ```bash
-pip install evalgate      # or: pipx install evalgate
+pip install git+https://github.com/ipezygj/evalgate
 ```
 
 ---
