@@ -77,6 +77,8 @@ python -m evalgate.checks     # -> evalgate selftest: OK (reproduced all 3 case 
 
 These are textbook checks — the value isn't the math, it's running **all** of them, adversarially, on a number you're too close to. `evalgate` is the open, do-it-yourself version. When a launch, a paper, or a fundraise rides on a figure and you want it audited independently first, that's [the paid practice](https://ipezygj.github.io/eval-audit-site/).
 
+Want the full checklist and the client-grade report template that wrap these checks? **[The Eval Integrity Kit](https://ipezystudio.gumroad.com/l/csod)** — the 9-check audit checklist, the report template I ship to clients, an `evalgate` quickstart, and three worked case studies.
+
 The fuller story — why AI benchmark scores and trading backtests overpromise, and how to catch them — is in the book **[Measured, Not Believed](https://leanpub.com/measurednotbelieved)** (pay what you want).
 
 ## License
