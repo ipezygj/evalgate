@@ -2,7 +2,7 @@
 
 **Cheap statistical checks for AI eval claims — run them before you publish.**
 
-Most benchmark headlines overstate themselves in one of a few nameable ways. `evalgate` is three tiny, dependency-free checks, one per failure mode — the same checks behind a set of [independent eval-integrity audits](https://ipezygj.github.io/eval-audit-site/) that caught these mistakes in published work.
+Most benchmark headlines overstate themselves in one of a few nameable ways. `evalgate` is four tiny, dependency-free checks, one per failure mode — the same checks behind a set of [independent eval-integrity audits](https://ipezygj.github.io/eval-audit-site/) that caught these mistakes in published work.
 
 Pure Python, zero dependencies, runs anywhere.
 
@@ -12,7 +12,7 @@ pip install git+https://github.com/ipezygj/evalgate
 
 ---
 
-## The three checks
+## The four checks
 
 ### 1. "We lead on subset X" — corrected for look-elsewhere
 Report the subset/metric/checkpoint where a model looks best and you are reporting the **maximum of many noisy tests**. Correct for how many you could have picked.
@@ -53,6 +53,20 @@ leave_one_out(xs, ys, fit=power_law_exponent, threshold=1.0).crosses_threshold  
 ```
 *(A reported "super-linear" grokking exponent, α=1.13, fell to 0.97 — with a better fit — when one point was dropped.)*
 
+### 4. Is the gap bigger than the sample can resolve?
+A leaderboard orders two models by a two-point accuracy gap on a finite test set. Ask whether that gap is even detectable at this sample size — or smaller than the minimum detectable effect, i.e. a coin flip.
+
+```bash
+evalgate power --n 200 --p1 0.85 --p2 0.83
+# gap=+0.02 on n=200 (NOT significant, p=0.585); MDE at 80% power=0.103 -> UNDERPOWERED (gap < MDE)
+```
+```python
+from evalgate import power_check
+power_check(200, 0.85, 0.83).resolvable   # False — 2pp over 200 items can't be resolved
+power_check(2000, 0.85, 0.80).resolvable  # True  — 5pp over 2000 items can
+```
+*(Frontier models on a fixed benchmark routinely sit a task or two apart — inside the MDE — so the #1 rank is noise. More votes, not a better model, resolves the tie.)*
+
 ---
 
 ## Library API
@@ -62,13 +76,14 @@ from evalgate import (
     correct_best_of, sidak, bonferroni,     # look-elsewhere
     bias_rate, binomial_test,               # judge / metric bias
     leave_one_out, ols_slope, power_law_exponent,   # fragility + fits
+    power_check, min_detectable_effect,     # power / minimum detectable effect
 )
 ```
 Every function returns a small dataclass that prints a one-line verdict and exposes the numbers (`.corrected_p`, `.p_value`, `.loo_min` …) so you can gate CI on them.
 
-Reproduce the three case studies:
+Reproduce the case studies:
 ```bash
-python -m evalgate.checks     # -> evalgate selftest: OK (reproduced all 3 case studies)
+python -m evalgate.checks     # -> evalgate selftest: OK (reproduced all 3 case studies + power check)
 ```
 
 ---

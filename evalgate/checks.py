@@ -1,15 +1,17 @@
 """evalgate.checks — small, dependency-free statistical checks for eval claims.
 
-Three public checks, one per common way a benchmark headline overstates itself:
+Four public checks, one per common way a benchmark headline overstates itself:
 
   1. correct_best_of  — a "we lead on subset X" win, corrected for how many
      subsets it could have been picked from (look-elsewhere / family-wise error).
   2. bias_rate        — a judge/metric that "prefers" one side: is the winner
      winning, or just longer / first / same-family? (exact binomial test).
   3. leave_one_out    — does one data point flip the slope of your fit? (fragility).
+  4. power_check      — is the gap between two models bigger than this sample can
+     resolve, or is the ranking a coin flip? (minimum detectable effect).
 
-Plus small OLS / power-law helpers the checks build on. Pure Python, no numpy/scipy,
-so it installs and runs anywhere. Textbook statistics — nothing proprietary.
+Plus small OLS / power-law / inverse-normal helpers the checks build on. Pure Python,
+no numpy/scipy, so it installs and runs anywhere. Textbook statistics — nothing proprietary.
 """
 from __future__ import annotations
 
@@ -200,6 +202,88 @@ def leave_one_out(xs: Sequence[float], ys: Sequence[float],
 
 
 # --------------------------------------------------------------------------- #
+# 4. Power / minimum detectable effect — can this sample resolve the gap?
+# --------------------------------------------------------------------------- #
+def _probit(p: float) -> float:
+    """Inverse standard-normal CDF (Acklam's approximation, ~1e-9). No scipy."""
+    if not 0.0 < p < 1.0:
+        raise ValueError("need 0<p<1")
+    a = (-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00)
+    b = (-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+         6.680131188771972e+01, -1.328068155288572e+01)
+    c = (-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00)
+    d = (7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+         3.754408661907416e+00)
+    plow, phigh = 0.02425, 1 - 0.02425
+    if p < plow:
+        q = math.sqrt(-2 * math.log(p))
+        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+    if p <= phigh:
+        q = p - 0.5; r = q*q
+        return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)
+    q = math.sqrt(-2 * math.log(1 - p))
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+
+
+def min_detectable_effect(n: int, p_base: float = 0.5,
+                          alpha: float = 0.05, power: float = 0.8) -> float:
+    """Smallest true accuracy gap two models (n items each) could reliably detect.
+
+    Below this, a ranking is a coin flip: the sample cannot resolve gaps this small
+    at the requested `power`. Uses the two-proportion normal approximation.
+    """
+    if n < 1 or not 0.0 < p_base < 1.0:
+        raise ValueError("need n>=1 and 0<p_base<1")
+    z = _probit(1 - alpha / 2) + _probit(power)
+    return z * math.sqrt(2 * p_base * (1 - p_base) / n)
+
+
+@dataclass
+class Power:
+    n: int
+    p1: float
+    p2: float
+    diff: float
+    p_value: float
+    significant: bool          # gap distinguishable from zero at alpha
+    mde: float                 # minimum detectable effect at `power`
+    resolvable: bool           # |diff| >= mde
+    alpha: float
+    power: float
+
+    def __str__(self) -> str:
+        v = "significant" if self.significant else "NOT significant"
+        r = "RESOLVED" if self.resolvable else "UNDERPOWERED (gap < MDE)"
+        return (f"gap={self.diff:+.3g} on n={self.n} ({v}, p={self.p_value:.3g}); "
+                f"MDE at {self.power:.0%} power={self.mde:.3g} -> {r}")
+
+
+def power_check(n: int, p1: float, p2: float, alpha: float = 0.05,
+                power: float = 0.8) -> Power:
+    """Is the gap between two models (accuracy p1 vs p2 over n items each) real,
+    or smaller than this sample can resolve?
+
+    Rankings are routinely drawn from gaps the test set can't distinguish from
+    zero. This returns the two-proportion significance of the observed gap AND the
+    minimum detectable effect: if the gap is below the MDE, the order is unsupported.
+    """
+    if n < 1 or not (0.0 <= p1 <= 1.0 and 0.0 <= p2 <= 1.0):
+        raise ValueError("need n>=1 and 0<=p<=1")
+    diff = p1 - p2
+    p_bar = (p1 + p2) / 2
+    se = math.sqrt(2 * p_bar * (1 - p_bar) / n) if 0 < p_bar < 1 else 0.0
+    if se == 0:
+        pval = 0.0 if diff != 0 else 1.0
+    else:
+        z = abs(diff) / se
+        pval = min(1.0, math.erfc(z / math.sqrt(2)))
+    mde = min_detectable_effect(n, p_bar if 0 < p_bar < 1 else 0.5, alpha, power)
+    return Power(n, p1, p2, diff, pval, pval < alpha, mde, abs(diff) >= mde, alpha, power)
+
+
+# --------------------------------------------------------------------------- #
 # self-test: reproduces the three public case studies
 # --------------------------------------------------------------------------- #
 def _selftest() -> None:
@@ -221,12 +305,19 @@ def _selftest() -> None:
     f = leave_one_out(xs, ys, threshold=1.0)
     assert f.crosses_threshold and f.worst_index == 5, f
 
-    # OLS / power-law sanity
+    # 4. Power / MDE: a 2pp gap over 200 items can't be resolved; 5pp over 2000 can
+    u = power_check(200, 0.85, 0.83)
+    assert not u.significant and not u.resolvable and 0.09 < u.mde < 0.11, u
+    r = power_check(2000, 0.85, 0.80)
+    assert r.significant and r.resolvable and r.mde < u.mde, r
+
+    # OLS / power-law + probit sanity
     s, _, r2 = ols_slope([0, 1, 2, 3], [1, 3, 5, 7])
     assert abs(s - 2.0) < 1e-9 and abs(r2 - 1.0) < 1e-9
     a, _ = power_law_exponent([1, 2, 4, 8], [1, 4, 16, 64])
     assert abs(a - 2.0) < 1e-9
-    print("evalgate selftest: OK (reproduced all 3 case studies)")
+    assert abs(_probit(0.975) - 1.959964) < 1e-4 and abs(_probit(0.8) - 0.841621) < 1e-4
+    print("evalgate selftest: OK (reproduced all 3 case studies + power check)")
 
 
 if __name__ == "__main__":

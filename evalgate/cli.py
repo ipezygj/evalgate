@@ -1,10 +1,10 @@
-"""Command-line interface: `evalgate correct|bias|loo`."""
+"""Command-line interface: `evalgate correct|bias|loo|power`."""
 from __future__ import annotations
 
 import argparse
 import sys
 
-from .checks import bias_rate, correct_best_of, leave_one_out, power_law_exponent
+from .checks import bias_rate, correct_best_of, leave_one_out, power_check, power_law_exponent
 
 
 def _read_xy(path: str) -> tuple[list[float], list[float]]:
@@ -46,6 +46,13 @@ def main(argv: list[str] | None = None) -> int:
     l.add_argument("--threshold", type=float, default=None,
                    help="flag if dropping a point crosses this value (e.g. 1.0)")
 
+    pw = sub.add_parser("power", help="can this sample resolve the gap? (min detectable effect)")
+    pw.add_argument("--n", type=int, required=True, help="items per model")
+    pw.add_argument("--p1", type=float, required=True, help="accuracy/rate of model 1")
+    pw.add_argument("--p2", type=float, required=True, help="accuracy/rate of model 2")
+    pw.add_argument("--alpha", type=float, default=0.05)
+    pw.add_argument("--power", type=float, default=0.8, help="target power (default 0.8)")
+
     args = p.parse_args(argv)
 
     if args.cmd == "correct":
@@ -59,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
         if fit:
             kw["fit"] = fit
         print(leave_one_out(xs, ys, **kw))
+    elif args.cmd == "power":
+        print(power_check(args.n, args.p1, args.p2, args.alpha, args.power))
     return 0
 
 

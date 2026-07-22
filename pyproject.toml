@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evalgate"
-version = "0.1.0"
+version = "0.2.0"
 description = "Dependency-free statistical checks for AI eval claims: multiple-comparisons correction, judge-bias tests, and leave-one-out fragility."
 readme = "README.md"
 requires-python = ">=3.9"

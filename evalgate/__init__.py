@@ -8,19 +8,23 @@ from .checks import (
     Bias,
     Correction,
     Fragility,
+    Power,
     bias_rate,
     binomial_test,
     bonferroni,
     correct_best_of,
     leave_one_out,
+    min_detectable_effect,
     ols_slope,
+    power_check,
     power_law_exponent,
     sidak,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "correct_best_of", "sidak", "bonferroni", "Correction",
     "bias_rate", "binomial_test", "Bias",
     "leave_one_out", "ols_slope", "power_law_exponent", "Fragility",
+    "power_check", "min_detectable_effect", "Power",
 ]

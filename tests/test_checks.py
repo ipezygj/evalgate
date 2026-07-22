@@ -7,7 +7,9 @@ from evalgate import (
     bonferroni,
     correct_best_of,
     leave_one_out,
+    min_detectable_effect,
     ols_slope,
+    power_check,
     power_law_exponent,
     sidak,
 )
@@ -25,6 +27,24 @@ def test_sidak_bonferroni_edges():
     assert sidak(0.0, 10) == 0.0
     assert sidak(1.0, 10) == 1.0
     assert bonferroni(0.02, 100) == 1.0  # clamped
+
+
+def test_power_underpowered_vs_resolved():
+    # a 2pp gap over 200 items is below what the sample can resolve
+    u = power_check(200, 0.85, 0.83)
+    assert not u.significant and not u.resolvable
+    assert 0.09 < u.mde < 0.11
+    # a 5pp gap over 2000 items resolves and is significant
+    r = power_check(2000, 0.85, 0.80)
+    assert r.significant and r.resolvable
+    assert r.mde < u.mde  # more data -> smaller detectable effect
+
+
+def test_min_detectable_effect_shrinks_with_n():
+    assert min_detectable_effect(100) > min_detectable_effect(1000)
+    # MDE = (z_alpha/2 + z_power) * sqrt(2 p(1-p)/n); at n=1, p=.5 that is z_sum*sqrt(.5)
+    expected = (1.959964 + 0.841621) * math.sqrt(0.5)
+    assert abs(min_detectable_effect(1, 0.5) - expected) < 1e-3
 
 
 def test_judge_bias_mtbench():
