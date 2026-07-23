@@ -93,3 +93,11 @@ def test_datasets_split_validation():
     assert "lite" in SWEBENCH_SPLITS and "test" in SWEBENCH_SPLITS
     with pytest.raises(ValueError):
         load_swebench("not-a-split")
+
+
+def test_format_renders_ascii_only():
+    from evalgate.format import format_matrix
+    a = audit_matrix({"A": set(range(160)), "B": set(range(95)), "C": set(range(60))}, n_boot=150)
+    s = format_matrix(a, "Demo")
+    assert "REAL #1" in s and "rank-CI" in s
+    s.encode("cp1252")   # must not raise — ASCII-safe on Windows consoles
