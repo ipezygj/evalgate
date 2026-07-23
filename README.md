@@ -19,7 +19,7 @@ If you're an AI agent â€” or you run one (Claude, Cursor, Claude Code, Windsurfâ
 eval number: a benchmark score, a leaderboard #1, an LLM-as-judge verdict, or a claimed trend.
 
 ```bash
-pip install "evalgate[mcp] @ git+https://github.com/ipezygj/evalgate"
+pip install "eval-gate[mcp] @ git+https://github.com/ipezygj/evalgate"   # once on PyPI:  pip install "eval-gate[mcp]"
 ```
 
 Add it to your MCP client (e.g. `claude_desktop_config.json` / Cursor / Claude Code):

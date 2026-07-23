@@ -2,8 +2,10 @@
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
+# PyPI distribution name is "eval-gate" ("evalgate" was already taken); the import package + CLI
+# stay `evalgate` / `evalgate-mcp` (distribution name != import name is standard, cf. scikit-learn).
 [project]
-name = "evalgate"
+name = "eval-gate"
 version = "0.4.0"
 description = "Dependency-free statistical checks for AI eval claims (multiple-comparisons, judge-bias, resolution, fragility) — as a CLI and an MCP server an agent calls before trusting a benchmark number."
 readme = "README.md"
