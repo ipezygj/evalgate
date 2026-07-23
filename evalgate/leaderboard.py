@@ -518,7 +518,10 @@ def audit(data, n_boot: int = 1000, seed: int = 0):
     Returns a MatrixAudit or a PairwiseAudit."""
     if isinstance(data, Mapping):
         return audit_matrix(data, n_boot=n_boot, seed=seed)
-    seq = list(data)
+    try:
+        seq = list(data)
+    except TypeError:
+        raise ValueError("data must be {model: items} or a sequence of (winner, loser) pairs")
     if seq and isinstance(seq[0], (list, tuple)) and len(seq[0]) == 2:
         return audit_pairwise(seq, n_boot=n_boot, seed=seed)
     raise ValueError("data must be {model: items} or a sequence of (winner, loser) pairs")
