@@ -158,3 +158,15 @@ def test_load_results_json_and_battles_csv(tmp_path):
         w.writerow(["A", "B", "model_a"]); w.writerow(["A", "B", "B"]); w.writerow(["A", "B", "tie"])
     b = load_battles_csv(str(cp))
     assert ("A", "B") in b and ("B", "A") in b and len(b) == 2   # tie dropped
+
+
+def test_audit_autodispatch():
+    from evalgate import audit
+    from evalgate.leaderboard import MatrixAudit, PairwiseAudit
+    m = audit({"A": set(range(160)), "B": set(range(90))}, n_boot=100)
+    assert isinstance(m, MatrixAudit)
+    p = audit([("A", "B")] * 30 + [("B", "A")] * 5, n_boot=50)
+    assert isinstance(p, PairwiseAudit)
+    import pytest as _p
+    with _p.raises(ValueError):
+        audit(12345)

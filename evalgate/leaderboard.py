@@ -509,6 +509,22 @@ def latent_dimensions(results: Mapping, n_perm: int = 30, topk: int = 5, seed: i
 
 
 # --------------------------------------------------------------------------- #
+# convenience: one entry point, auto-detecting the data shape
+# --------------------------------------------------------------------------- #
+def audit(data, n_boot: int = 1000, seed: int = 0):
+    """Auto-detect the data shape and run the right audit:
+      * a mapping {model: solved-items | {item: score}}  -> audit_matrix (per-item leaderboard)
+      * a sequence of (winner, loser) pairs               -> audit_pairwise (head-to-head board)
+    Returns a MatrixAudit or a PairwiseAudit."""
+    if isinstance(data, Mapping):
+        return audit_matrix(data, n_boot=n_boot, seed=seed)
+    seq = list(data)
+    if seq and isinstance(seq[0], (list, tuple)) and len(seq[0]) == 2:
+        return audit_pairwise(seq, n_boot=n_boot, seed=seed)
+    raise ValueError("data must be {model: items} or a sequence of (winner, loser) pairs")
+
+
+# --------------------------------------------------------------------------- #
 # self-test
 # --------------------------------------------------------------------------- #
 def _selftest() -> None:

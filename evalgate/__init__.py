@@ -24,6 +24,7 @@ from .leaderboard import (
     MatrixAudit,
     PairwiseAudit,
     Dimensionality,
+    audit,
     audit_matrix,
     audit_pairwise,
     latent_dimensions,
@@ -38,7 +39,7 @@ __all__ = [
     "leave_one_out", "ols_slope", "power_law_exponent", "Fragility",
     "power_check", "min_detectable_effect", "Power",
     # whole-leaderboard audits (raw per-item / pairwise data)
-    "audit_matrix", "audit_pairwise", "latent_dimensions", "mcnemar_p",
+    "audit", "audit_matrix", "audit_pairwise", "latent_dimensions", "mcnemar_p",
     "MatrixAudit", "PairwiseAudit", "Dimensionality",
     "format_matrix", "format_pairwise", "format_dimensions",
 ]
