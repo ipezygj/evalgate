@@ -12,6 +12,7 @@ Requires: mcp  (pip install mcp).  The checks themselves are zero-dependency (ev
 """
 from mcp.server.fastmcp import FastMCP
 from . import checks as C
+from . import leaderboard as L
 
 mcp = FastMCP(
     "evalgate",
@@ -153,6 +154,83 @@ def check_trend_fragility(xs: list[float], ys: list[float], threshold: float | N
                     f"Robust: slope stays in [{f.loo_min:.3f}, {f.loo_max:.3f}] under leave-one-out."),
         "recommendation": ("Don't state the trend/exponent as a finding — it hinges on one point."
                            if fragile else "The trend is robust to leave-one-out."),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Deeper audits — when you have the RAW per-item results, not just the scores.
+# check_top_rank approximates the tie group from summary scores; these do it properly.
+# --------------------------------------------------------------------------- #
+@mcp.tool()
+def audit_leaderboard(results: dict, n_boot: int = 1000) -> dict:
+    """Audit a leaderboard PROPERLY from its raw per-item results — the real version of
+    check_top_rank. Use this instead of check_top_rank whenever you have, for each model, the list of
+    test items it solved (e.g. SWE-bench 'resolved' instance-ids, or a {item: 0/1} map). It bootstraps
+    each model's RANK to get a 95% rank confidence interval and P(truly #1), finds the tie group with
+    a paired McNemar test (the correct test on shared items), counts resolvable tiers, and re-tests by
+    splitting the items in half many times.
+
+    results: {model_name: [solved_item_ids]} OR {model_name: {item_id: score}}.
+    Use when: you have per-item / per-instance results and are about to report a #1 or an ordering.
+    """
+    try:
+        a = L.audit_matrix(results, n_boot=int(n_boot))
+    except Exception as e:
+        return {"error": str(e)}
+    return {
+        "n_models": a.n_models, "n_items": a.n_items, "leader": a.leader, "top_score": a.top_score,
+        "top_rank_resolved": a.top_resolved, "tie_group": a.tie_group, "tie_group_size": len(a.tie_group),
+        "p_top_is_1": a.p_top_is_1, "stays_1_across_splits": a.stay_frac,
+        "kendall_tau_stability": a.kendall_tau, "effective_tiers": a.effective_tiers,
+        "top_rows": [{"model": r.model, "score": r.score, "rank": r.rank,
+                      "rank_ci": [r.rank_lo, r.rank_hi], "p_is_1": r.p_is_1} for r in a.rows[:10]],
+        "verdict": a.verdict, "recommendation": a.recommendation,
+    }
+
+
+@mcp.tool()
+def audit_preferences(battles: list, n_boot: int = 200) -> dict:
+    """Audit a head-to-head / A-B preference leaderboard (arena, human or LLM votes) from the raw
+    battles. Fits a Bradley-Terry ranking, bootstraps the top model's rank CI + P(#1), AND checks
+    whether the preferences are transitive or run in rock-paper-scissors cycles — a single linear
+    ranking is only honest if preferences are transitive.
+
+    battles: a list of [winner, loser] pairs (one per decisive vote).
+    Use when: a ranking comes from pairwise votes/comparisons rather than per-item scores.
+    """
+    try:
+        pairs = [(x[0], x[1]) for x in battles]
+        a = L.audit_pairwise(pairs, n_boot=int(n_boot))
+    except Exception as e:
+        return {"error": str(e)}
+    return {
+        "n_battles": a.n_battles, "leader": a.leader, "top_rank_resolved": a.top_resolved,
+        "tie_group": a.tie_group, "p_top_is_1": a.p_top_is_1,
+        "intransitivity_pct": a.intransitivity_pct, "null_intransitivity_pct": a.null_intransitivity_pct,
+        "preferences_transitive": a.transitive,
+        "top_rows": [{"model": r.model, "rank": r.rank, "rank_ci": [r.rank_lo, r.rank_hi],
+                      "p_is_1": r.p_is_1} for r in a.rows[:10]],
+        "verdict": a.verdict, "recommendation": a.recommendation,
+    }
+
+
+@mcp.tool()
+def check_dimensions(results: dict) -> dict:
+    """Does a leaderboard measure ONE skill or several? A single rank assumes a total order along one
+    axis. This compares the result matrix's eigenspectrum to a shuffled null; more than one factor
+    means two models with the same headline score can be strong on different parts of the benchmark,
+    and the scalar rank hides that.
+
+    results: {model_name: [solved_item_ids]} OR {model_name: {item_id: score}} (>=4 models).
+    Use when: deciding whether a single leaderboard number fairly summarizes a multi-skill benchmark.
+    """
+    try:
+        d = L.latent_dimensions(results)
+    except Exception as e:
+        return {"error": str(e)}
+    return {
+        "significant_skills": d.n_significant, "eigenvalues": d.eigenvalues, "null_edge": d.null_edge,
+        "top_factor_fraction": d.top1_fraction, "verdict": d.verdict, "recommendation": d.recommendation,
     }
 
 

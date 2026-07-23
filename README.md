@@ -42,6 +42,16 @@ Tools the agent gets, each with a "call this when…" description it can reason 
 | `check_resolution` | calling one of two close models better (can the benchmark even tell them apart?) |
 | `check_trend_fragility` | reporting a fitted trend / scaling exponent (does one point carry it?) |
 
+The five checks above work on **summary numbers** (scores, p-values, win counts). If the agent has
+the **raw per-item results** — which items each model solved, or the head-to-head battles — three
+deeper tools do the real audit instead of an approximation:
+
+| tool | the agent calls it when… |
+|---|---|
+| `audit_leaderboard` | it has per-item results ({model: [solved item-ids]}) — the real version of `check_top_rank`: bootstrapped rank confidence intervals, the paired-McNemar tie group, resolvable tiers, split-half stability |
+| `audit_preferences` | a ranking comes from pairwise votes ([winner, loser] battles) — Bradley-Terry rank CIs **and** a Condorcet check that preferences are transitive, not rock-paper-scissors cycles |
+| `check_dimensions` | deciding whether one number fairly summarizes a multi-skill benchmark — counts the latent skills in the result matrix (eigenspectrum vs a shuffled null) |
+
 The point: an agent that produces an eval number should sanity-check it, and now it can — in one
 call, with a plain verdict and a recommendation. Reproducible, zero-dependency checks (the `mcp`
 extra is only for the server transport).

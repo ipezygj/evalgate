@@ -20,11 +20,23 @@ from .checks import (
     power_law_exponent,
     sidak,
 )
+from .leaderboard import (
+    MatrixAudit,
+    PairwiseAudit,
+    Dimensionality,
+    audit_matrix,
+    audit_pairwise,
+    latent_dimensions,
+    mcnemar_p,
+)
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 __all__ = [
     "correct_best_of", "sidak", "bonferroni", "Correction",
     "bias_rate", "binomial_test", "Bias",
     "leave_one_out", "ols_slope", "power_law_exponent", "Fragility",
     "power_check", "min_detectable_effect", "Power",
+    # whole-leaderboard audits (raw per-item / pairwise data)
+    "audit_matrix", "audit_pairwise", "latent_dimensions", "mcnemar_p",
+    "MatrixAudit", "PairwiseAudit", "Dimensionality",
 ]
