@@ -1,20 +1,20 @@
-"""evalgate.leaderboard — audit a WHOLE leaderboard from its raw per-item results.
+"""evalgate.leaderboard - audit a WHOLE leaderboard from its raw per-item results.
 
 `checks.py` works on summary numbers (you hand it scores, p-values, win counts). This module works
-on the RAW data a leaderboard already publishes — which items each model solved, or the pairwise
-battles — and does the real audit instead of an approximation:
+on the RAW data a leaderboard already publishes - which items each model solved, or the pairwise
+battles - and does the real audit instead of an approximation:
 
-  * audit_matrix(results)   — per-item pass/fail per model. Bootstraps the RANK of every model over
+  * audit_matrix(results)   - per-item pass/fail per model. Bootstraps the RANK of every model over
     the items to get a 95% rank confidence interval and P(truly #1); finds the significance group
-    tied for first with a PAIRED McNemar test (the correct test — same items, look at disagreements);
+    tied for first with a PAIRED McNemar test (the correct test - same items, look at disagreements);
     counts how many tiers the board can actually resolve; and re-tests stability by splitting the
     items in half many times. This is what `check_top_rank` approximates when all you have is scores.
 
-  * audit_pairwise(battles) — head-to-head win/loss (arenas, A/B preference). Fits a Bradley-Terry
+  * audit_pairwise(battles) - head-to-head win/loss (arenas, A/B preference). Fits a Bradley-Terry
     ranking, bootstraps each player's rank CI + P(#1), and checks whether the preferences are
     transitive or run in rock-paper-scissors cycles (a linear ranking is only honest if transitive).
 
-  * latent_dimensions(results) — does the board measure ONE skill or several? Compares the result
+  * latent_dimensions(results) - does the board measure ONE skill or several? Compares the result
     matrix's eigenspectrum to a shuffled null; >1 significant factor means the single rank is a lossy
     projection of a multi-skilled thing.
 
@@ -108,7 +108,7 @@ class MatrixAudit:
     rows: list = field(default_factory=list)
     verdict: str = ""
     recommendation: str = ""
-    # psychometric "why" (Rasch IRT) — None when skipped for very large boards
+    # psychometric "why" (Rasch IRT) - None when skipped for very large boards
     reliability: float | None = None      # marginal reliability of the whole ordering (>~0.9 = trustworthy)
     frontier_info: float | None = None    # test information at the top ability (how well the board resolves the frontier)
     z_top2: float | None = None           # #1 vs #2 ability separation in sigma (|z|<2 = indistinguishable)
@@ -222,7 +222,7 @@ def _effective_tiers(rows: list) -> int:
 def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixAudit:
     """Audit a leaderboard from per-item results. `results` maps each model to either the set/list of
     item-ids it solved, or a {item: score} dict. Returns rank confidence intervals, the tie group at
-    the top, resolvable tiers, and split-half stability — the real version of check_top_rank."""
+    the top, resolvable tiers, and split-half stability - the real version of check_top_rank."""
     names, vecs, items = _vectors(results)
     m = len(items)
     obs = {s: sum(vecs[s]) / m for s in names}
@@ -232,7 +232,7 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
     if len(names) == 1:                       # nothing to rank against
         row = RankRow(leader, round(obs[leader], 4), 1, 1, 1, 1.0)
         return MatrixAudit(1, m, leader, round(obs[leader], 4), [leader], False, 1.0, 1.0, 1.0, 1,
-                           [row], "Only one submission — there is no ranking to audit.",
+                           [row], "Only one submission - there is no ranking to audit.",
                            "Add at least one competitor to compare against.")
 
     obs_rank = _ranks(obs, names)
@@ -283,7 +283,7 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
     tiers = _effective_tiers(rows)
     p1 = rows[0].p_is_1
 
-    # psychometric "why" — Rasch IRT (skip on very large boards to keep it fast) + winner's-curse
+    # psychometric "why" - Rasch IRT (skip on very large boards to keep it fast) + winner's-curse
     reliability = frontier_info = z_top2 = winners_curse = None
     if all(v in (0.0, 1.0) for s in names for v in vecs[s]):   # IRT defined on binary pass/fail
         if S := len(names):
@@ -295,7 +295,7 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
 
     resolved = len(tie) == 1 and p1 >= 0.85 and stay >= K - 2
     if resolved:
-        verdict = (f"#1 ({leader}) is a REAL, resolved champion — significantly ahead of #2, "
+        verdict = (f"#1 ({leader}) is a REAL, resolved champion - significantly ahead of #2, "
                    f"and it stays #1 on {round(stay / K * 100)}% of random item splits.")
         rec = "Report the #1 as-is; publishing the rank confidence interval keeps it honest."
     elif len(tie) >= 2:
@@ -304,9 +304,9 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
                    f"resamples and the title changes hands on {round((1 - stay / K) * 100)}% of item splits.")
         if z_top2 is not None and abs(z_top2) < 2:
             verdict += (f" IRT confirms it: #1 and #2 are {abs(z_top2):.2f} sigma apart in ability"
-                        + (f", and the frontier carries little test information — the board has run out of items "
+                        + (f", and the frontier carries little test information - the board has run out of items "
                            f"hard enough to separate the top." if reliability and reliability > 0.9 else "") + ".")
-        rec = "Report the significance group tied for #1, or a rank confidence interval — not a lone #1."
+        rec = "Report the significance group tied for #1, or a rank confidence interval - not a lone #1."
     else:
         verdict = (f"#1 ({leader}) is only partly resolved (P(#1)={p1:.2f}, stays #1 on "
                    f"{round(stay / K * 100)}% of splits).")
@@ -428,7 +428,7 @@ def audit_pairwise(battles: Sequence, n_boot: int = 200, seed: int = 0,
 
     resolved = len(tie) == 1 and p1 >= 0.85
     if resolved:
-        verdict = (f"#1 ({leader}) is a REAL champion — first in {round(p1 * 100)}% of bootstrap "
+        verdict = (f"#1 ({leader}) is a REAL champion - first in {round(p1 * 100)}% of bootstrap "
                    f"resamples over {n:,} comparisons.")
         rec = "Report the #1; it is backed by enough comparisons to resolve."
     else:
@@ -436,7 +436,7 @@ def audit_pairwise(battles: Sequence, n_boot: int = 200, seed: int = 0,
                    f"in only {round(p1 * 100)}% of resamples over {n:,} comparisons.")
         rec = "Report a tie-group, or gather more comparisons to resolve the top."
     if not transitive:
-        verdict += f" Preferences are INTRANSITIVE ({obs_frac*100:.1f}% cyclic triples > null {null_hi*100:.1f}%) — a single line loses real structure."
+        verdict += f" Preferences are INTRANSITIVE ({obs_frac*100:.1f}% cyclic triples > null {null_hi*100:.1f}%) - a single line loses real structure."
 
     return PairwiseAudit(n, leader, tie, resolved, p1, round(obs_frac * 100, 2),
                          round(null_hi * 100, 2), transitive, rows, verdict, rec)
@@ -505,10 +505,10 @@ def latent_dimensions(results: Mapping, n_perm: int = 30, topk: int = 5, seed: i
     n_sig = sum(1 for e in eigs if e > edge)
     frac = eigs[0] / sum(eigs) if sum(eigs) else 0.0
     if n_sig <= 1:
-        verdict = f"ONE dominant skill — a single ranking is appropriate (top factor explains {frac*100:.0f}%)."
+        verdict = f"ONE dominant skill - a single ranking is appropriate (top factor explains {frac*100:.0f}%)."
         rec = "A scalar leaderboard is a fair summary here."
     else:
-        verdict = (f"{n_sig} distinct skills — the single ranking is a lossy projection; two models with "
+        verdict = (f"{n_sig} distinct skills - the single ranking is a lossy projection; two models with "
                    f"the same score can be strong on different parts of the benchmark.")
         rec = "Publish sub-scores or a 2-D skill plot alongside the single rank."
     return Dimensionality(n_sig, [round(e, 3) for e in eigs], round(edge, 3), round(frac, 3), verdict, rec)

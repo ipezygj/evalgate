@@ -178,3 +178,17 @@ def test_score_confidence_intervals():
         assert r.score_lo <= r.score <= r.score_hi          # CI brackets the point estimate
     # a clear leader's score CI should not overlap the runner-up's by much
     assert a.rows[0].score_lo > a.rows[1].score_lo
+
+
+def test_format_ascii_strict():
+    """Every formatter's output must be pure ASCII (safe on any console encoding)."""
+    from evalgate.format import format_matrix, format_pairwise, format_dimensions
+    from evalgate.leaderboard import audit_pairwise, latent_dimensions
+    import random
+    m = audit_matrix({"A": set(range(160)), "B": set(range(95)), "C": set(range(60))}, n_boot=150)
+    b = audit_pairwise([("A", "B")] * 30 + [("B", "A")] * 6, n_boot=60, min_pair=5)
+    rng = random.Random(0)
+    subs = {f"m{k}": {i for i in range(150) if rng.random() < 0.3 + 0.03 * k} for k in range(8)}
+    d = latent_dimensions(subs, n_perm=12)
+    for text in (format_matrix(m), format_pairwise(b), format_dimensions(d)):
+        text.encode("ascii")   # raises if any non-ASCII slipped in

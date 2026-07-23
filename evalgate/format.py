@@ -1,8 +1,8 @@
-"""evalgate.format — turn a leaderboard audit into a clean, human-readable report.
+"""evalgate.format - turn a leaderboard audit into a clean, human-readable report.
 
 The audits (leaderboard.audit_matrix / audit_pairwise / latent_dimensions) return dataclasses full of
 numbers. These helpers render them as an aligned text block you can print, paste into a PR comment, or
-drop in a report. Pure formatting — no new statistics.
+drop in a report. Pure formatting - no new statistics.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .leaderboard import MatrixAudit, PairwiseAudit, Dimensionality
 
 
 def _bar(frac: float, width: int = 20) -> str:
-    # ASCII only — renders on any console/encoding (Windows cp1252 included)
+    # ASCII only - renders on any console/encoding (Windows cp1252 included)
     frac = max(0.0, min(1.0, frac))
     n = round(frac * width)
     return "#" * n + "-" * (width - n)
@@ -19,7 +19,7 @@ def _bar(frac: float, width: int = 20) -> str:
 def format_matrix(a: MatrixAudit, title: str = "Leaderboard") -> str:
     mark = "REAL #1" if a.top_resolved else (f"TIE ({len(a.tie_group)})" if len(a.tie_group) > 1 else "UNRESOLVED")
     lines = [
-        f"{title} — {a.n_models} submissions x {a.n_items} items",
+        f"{title} - {a.n_models} submissions x {a.n_items} items",
         f"  verdict:      [{mark}]  P(printed #1 is true #1) {_bar(a.p_top_is_1)} {a.p_top_is_1:.0%}",
         f"  #1:           {a.leader}  (score {a.top_score:.3f})",
         f"  tie group:    {', '.join(a.tie_group)}",
@@ -47,7 +47,7 @@ def format_pairwise(a: PairwiseAudit, title: str = "Pairwise leaderboard") -> st
     mark = "REAL #1" if a.top_resolved else f"TIE ({len(a.tie_group)})"
     trans = "transitive" if a.transitive else "INTRANSITIVE (rock-paper-scissors)"
     lines = [
-        f"{title} — {a.n_battles:,} comparisons",
+        f"{title} - {a.n_battles:,} comparisons",
         f"  verdict:      [{mark}]  P(#1) {_bar(a.p_top_is_1)} {a.p_top_is_1:.0%}",
         f"  #1:           {a.leader}",
         f"  tie group:    {', '.join(a.tie_group)}",
