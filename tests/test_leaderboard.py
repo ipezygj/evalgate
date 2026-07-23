@@ -2,6 +2,8 @@
 import math
 import random
 
+import pytest
+
 from evalgate.leaderboard import (
     audit_matrix,
     audit_pairwise,
@@ -84,3 +86,10 @@ def test_psychometrics_populated_and_discriminating():
     tie = {n: {i for i in range(200) if rng.random() < 0.5} for n in ("X", "Y", "Z")}
     t = audit_matrix(tie, n_boot=200)
     assert t.z_top2 is not None and abs(t.z_top2) < 2          # indistinguishable
+
+
+def test_datasets_split_validation():
+    from evalgate.datasets import load_swebench, SWEBENCH_SPLITS
+    assert "lite" in SWEBENCH_SPLITS and "test" in SWEBENCH_SPLITS
+    with pytest.raises(ValueError):
+        load_swebench("not-a-split")

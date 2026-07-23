@@ -237,6 +237,25 @@ def check_dimensions(results: dict) -> dict:
     }
 
 
+@mcp.tool()
+def audit_swebench(split: str = "lite", n_boot: int = 1000) -> dict:
+    """Audit a live SWE-bench leaderboard by name — fetches the public per-instance results and runs
+    the full audit_leaderboard on them. No data to paste: just the split.
+
+    split: "test" (large, ~1400 tasks), "verified" (500), "lite" (300), or "multimodal".
+    Use when: the user references SWE-bench and you want the real confidence verdict on its current #1.
+    Note: makes a network request to the public swe-bench/experiments repo.
+    """
+    try:
+        from . import datasets as D
+        subs = D.load_swebench(split)
+    except Exception as e:
+        return {"error": f"could not load SWE-bench {split}: {e}"}
+    out = audit_leaderboard({k: list(v) for k, v in subs.items()}, n_boot=int(n_boot))
+    out["benchmark"] = f"SWE-bench {split}"
+    return out
+
+
 def main():
     mcp.run()
 
