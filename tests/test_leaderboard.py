@@ -70,3 +70,17 @@ def test_mcnemar_symmetry():
     assert mcnemar_p(0, 0) == 1.0
     assert mcnemar_p(10, 0) < 0.01
     assert mcnemar_p(5, 5) > 0.5
+
+
+def test_psychometrics_populated_and_discriminating():
+    # clear leader: high reliability, well-separated top two, low winner's-curse
+    a = audit_matrix({"A": set(range(160)), "B": set(range(95)), "C": set(range(60))}, n_boot=200)
+    assert a.reliability is not None and a.reliability > 0.9
+    assert a.z_top2 is not None and abs(a.z_top2) > 2          # distinguishable
+    assert a.winners_curse is not None
+    # coin-flip tie: top two indistinguishable in ability
+    import random
+    rng = random.Random(0)
+    tie = {n: {i for i in range(200) if rng.random() < 0.5} for n in ("X", "Y", "Z")}
+    t = audit_matrix(tie, n_boot=200)
+    assert t.z_top2 is not None and abs(t.z_top2) < 2          # indistinguishable

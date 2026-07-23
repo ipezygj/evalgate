@@ -106,6 +106,87 @@ class MatrixAudit:
     rows: list = field(default_factory=list)
     verdict: str = ""
     recommendation: str = ""
+    # psychometric "why" (Rasch IRT) — None when skipped for very large boards
+    reliability: float | None = None      # marginal reliability of the whole ordering (>~0.9 = trustworthy)
+    frontier_info: float | None = None    # test information at the top ability (how well the board resolves the frontier)
+    z_top2: float | None = None           # #1 vs #2 ability separation in sigma (|z|<2 = indistinguishable)
+    winners_curse: float | None = None    # EVT: expected inflation of the displayed #1 from being the max of many
+
+
+def _sig(x: float) -> float:
+    if x >= 30:
+        return 1.0
+    if x <= -30:
+        return 0.0
+    return 1.0 / (1.0 + math.exp(-x))
+
+
+def _irt_rasch(names, vecs, items, iters=25):
+    """Compact Rasch (1-PL) fit by joint ML. Returns (reliability, info_top, info_median, z_top2).
+    The mechanistic 'why': a saturated board has little test information at the frontier, so the top
+    ability is unresolvable by construction even when the overall ordering is reliable."""
+    S, I = len(names), len(items)
+
+    def logit(p):
+        p = min(0.98, max(0.02, p))
+        return math.log(p / (1 - p))
+
+    theta = {s: logit(sum(vecs[s]) / I) for s in names}
+    b = [-logit(sum(vecs[s][i] for s in names) / S) for i in range(I)]
+    for _ in range(iters):
+        for s in names:
+            num = den = 0.0
+            th = theta[s]
+            for i in range(I):
+                p = _sig(th - b[i]); num += vecs[s][i] - p; den += p * (1 - p)
+            if den > 1e-9:
+                theta[s] = max(-6.0, min(6.0, th + num / den))
+        for i in range(I):
+            num = den = 0.0
+            bi = b[i]
+            for s in names:
+                p = _sig(theta[s] - bi); num += vecs[s][i] - p; den += p * (1 - p)
+            if den > 1e-9:
+                b[i] = max(-6.0, min(6.0, bi - num / den))
+        mb = sum(b) / I
+        b = [x - mb for x in b]
+    se = {}
+    for s in names:
+        info = sum(_sig(theta[s] - b[i]) * (1 - _sig(theta[s] - b[i])) for i in range(I))
+        se[s] = (1 / math.sqrt(info)) if info > 1e-9 else 10.0
+    var_t = statistics.pvariance(list(theta.values())) or 1e-9
+    mean_se2 = statistics.fmean([min(se[s], 10) ** 2 for s in names])
+    reliability = max(0.0, min(1.0, 1 - mean_se2 / var_t))
+    ranked = sorted(names, key=lambda s: -theta[s])
+
+    def testinfo(t):
+        return sum(_sig(t - b[i]) * (1 - _sig(t - b[i])) for i in range(I))
+
+    info_top = testinfo(theta[ranked[0]])
+    info_med = testinfo(statistics.median(list(theta.values())))
+    z12 = 0.0
+    if len(ranked) > 1 and se[ranked[0]] < 9:
+        z12 = (theta[ranked[0]] - theta[ranked[1]]) / math.sqrt(se[ranked[0]] ** 2 + se[ranked[1]] ** 2)
+    return reliability, info_top, info_med, z12
+
+
+def _expected_max_normal(k: int) -> float:
+    """E[max of k iid standard normals], Blom approximation (deterministic, no scipy)."""
+    from .checks import _probit
+    k = max(2, k)
+    return _probit((k - 0.375) / (k + 0.25))
+
+
+def _winners_curse(scores, m):
+    """EVT: how much the displayed max is inflated over its tied group's true level (the selection edge)."""
+    sc = sorted(scores, reverse=True)
+    top = sc[0]
+    se_top = (top * (1 - top) / m) ** 0.5 if 0 < top < 1 else (statistics.pstdev(sc) / (len(sc) ** 0.5) if len(sc) > 1 else 0.0)
+    group = [x for x in sc if x >= top - 2 * se_top] or [top]
+    K = max(2, len(group))
+    p = statistics.fmean(group)
+    se = (p * (1 - p) / m) ** 0.5 if 0 < p < 1 else se_top
+    return se * _expected_max_normal(K)
 
 
 def _significance_group(names, vecs, items, leader):
@@ -188,6 +269,17 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
 
     tiers = _effective_tiers(rows)
     p1 = rows[0].p_is_1
+
+    # psychometric "why" — Rasch IRT (skip on very large boards to keep it fast) + winner's-curse
+    reliability = frontier_info = z_top2 = winners_curse = None
+    if all(v in (0.0, 1.0) for s in names for v in vecs[s]):   # IRT defined on binary pass/fail
+        if S := len(names):
+            if S * m <= 120_000:
+                reliability, frontier_info, _info_med, z_top2 = _irt_rasch(names, vecs, items)
+                reliability = round(reliability, 3); frontier_info = round(frontier_info, 2)
+                z_top2 = round(z_top2, 2)
+        winners_curse = round(_winners_curse([obs[s] for s in names], m), 4)
+
     resolved = len(tie) == 1 and p1 >= 0.85 and stay >= K - 2
     if resolved:
         verdict = (f"#1 ({leader}) is a REAL, resolved champion — significantly ahead of #2, "
@@ -197,6 +289,10 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
         verdict = (f"#1 is NOT resolved: {len(tie)} models are a statistical tie for first "
                    f"({', '.join(tie)}). The printed #1 is truly first in only {round(p1 * 100)}% of "
                    f"resamples and the title changes hands on {round((1 - stay / K) * 100)}% of item splits.")
+        if z_top2 is not None and abs(z_top2) < 2:
+            verdict += (f" IRT confirms it: #1 and #2 are {abs(z_top2):.2f} sigma apart in ability"
+                        + (f", and the frontier carries little test information — the board has run out of items "
+                           f"hard enough to separate the top." if reliability and reliability > 0.9 else "") + ".")
         rec = "Report the significance group tied for #1, or a rank confidence interval — not a lone #1."
     else:
         verdict = (f"#1 ({leader}) is only partly resolved (P(#1)={p1:.2f}, stays #1 on "
@@ -204,7 +300,8 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
         rec = "Show the rank confidence interval; treat the exact top order with care."
 
     return MatrixAudit(len(names), m, leader, round(obs[leader], 4), tie, resolved, p1,
-                       round(stay / K, 3), round(statistics.fmean(taus), 3), tiers, rows, verdict, rec)
+                       round(stay / K, 3), round(statistics.fmean(taus), 3), tiers, rows, verdict, rec,
+                       reliability, frontier_info, z_top2, winners_curse)
 
 
 # --------------------------------------------------------------------------- #
