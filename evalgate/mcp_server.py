@@ -195,8 +195,9 @@ def audit_leaderboard(results: dict, n_boot: int = 1000) -> dict:
         # psychometric "why" (Rasch IRT) + winner's-curse; null when skipped for very large boards
         "reliability": a.reliability, "frontier_test_information": a.frontier_info,
         "top2_ability_separation_sigma": a.z_top2, "winners_curse_inflation": a.winners_curse,
-        "top_rows": [{"model": r.model, "score": r.score, "rank": r.rank,
-                      "rank_ci": [r.rank_lo, r.rank_hi], "p_is_1": r.p_is_1} for r in a.rows[:10]],
+        "top_rows": [{"model": r.model, "score": r.score, "score_ci": [r.score_lo, r.score_hi],
+                      "rank": r.rank, "rank_ci": [r.rank_lo, r.rank_hi], "p_is_1": r.p_is_1}
+                     for r in a.rows[:10]],
         "verdict": a.verdict, "recommendation": a.recommendation,
     }
 

@@ -170,3 +170,11 @@ def test_audit_autodispatch():
     import pytest as _p
     with _p.raises(ValueError):
         audit(12345)
+
+
+def test_score_confidence_intervals():
+    a = audit_matrix({"A": set(range(160)), "B": set(range(95)), "C": set(range(60))}, n_boot=300)
+    for r in a.rows:
+        assert r.score_lo <= r.score <= r.score_hi          # CI brackets the point estimate
+    # a clear leader's score CI should not overlap the runner-up's by much
+    assert a.rows[0].score_lo > a.rows[1].score_lo

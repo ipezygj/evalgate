@@ -89,6 +89,8 @@ class RankRow:
     rank_lo: int
     rank_hi: int
     p_is_1: float
+    score_lo: float = 0.0     # 95% bootstrap CI on the score (matrix audits; 0 for pairwise)
+    score_hi: float = 0.0
 
 
 @dataclass
@@ -237,6 +239,7 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
 
     rng = random.Random(seed)
     rank_samples = {s: [] for s in names}
+    score_samples = {s: [] for s in names}
     is_one = {s: 0 for s in names}
     for _ in range(n_boot):
         idx = [rng.randrange(m) for _ in range(m)]
@@ -245,6 +248,7 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
         is_one[min(r, key=lambda s: r[s])] += 1
         for s in names:
             rank_samples[s].append(r[s])
+            score_samples[s].append(bscore[s] / m)
 
     def ci(v):
         v = sorted(v)
@@ -253,7 +257,9 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
     rows = []
     for s in ranked:
         lo, hi = ci(rank_samples[s])
-        rows.append(RankRow(s, round(obs[s], 4), obs_rank[s], lo, hi, round(is_one[s] / n_boot, 3)))
+        slo, shi = ci(score_samples[s])
+        rows.append(RankRow(s, round(obs[s], 4), obs_rank[s], lo, hi, round(is_one[s] / n_boot, 3),
+                            round(slo, 4), round(shi, 4)))
 
     tie = _significance_group(names, vecs, items, leader)
     # a model is in the displayed tie group if McNemar-tied AND its rank CI touches 1
