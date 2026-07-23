@@ -143,3 +143,18 @@ def test_determinism_same_seed_same_result():
 def test_public_api_exports_format():
     import evalgate
     assert hasattr(evalgate, "format_matrix") and hasattr(evalgate, "audit_matrix")
+
+
+def test_load_results_json_and_battles_csv(tmp_path):
+    import json as _j, csv as _c
+    from evalgate.datasets import load_results_json, load_battles_csv
+    rp = tmp_path / "r.json"
+    rp.write_text(_j.dumps({"A": list(range(20)), "B": list(range(10))}))
+    r = load_results_json(str(rp))
+    assert r["A"] == set(range(20))
+    cp = tmp_path / "b.csv"
+    with open(cp, "w", newline="") as f:
+        w = _c.writer(f); w.writerow(["model_a", "model_b", "winner"])
+        w.writerow(["A", "B", "model_a"]); w.writerow(["A", "B", "B"]); w.writerow(["A", "B", "tie"])
+    b = load_battles_csv(str(cp))
+    assert ("A", "B") in b and ("B", "A") in b and len(b) == 2   # tie dropped
