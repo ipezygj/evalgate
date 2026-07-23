@@ -224,9 +224,16 @@ def audit_matrix(results: Mapping, n_boot: int = 1000, seed: int = 0) -> MatrixA
     names, vecs, items = _vectors(results)
     m = len(items)
     obs = {s: sum(vecs[s]) / m for s in names}
-    obs_rank = _ranks(obs, names)
     ranked = sorted(names, key=lambda s: -obs[s])
     leader = ranked[0]
+
+    if len(names) == 1:                       # nothing to rank against
+        row = RankRow(leader, round(obs[leader], 4), 1, 1, 1, 1.0)
+        return MatrixAudit(1, m, leader, round(obs[leader], 4), [leader], False, 1.0, 1.0, 1.0, 1,
+                           [row], "Only one submission — there is no ranking to audit.",
+                           "Add at least one competitor to compare against.")
+
+    obs_rank = _ranks(obs, names)
 
     rng = random.Random(seed)
     rank_samples = {s: [] for s in names}

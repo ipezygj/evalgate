@@ -101,3 +101,29 @@ def test_format_renders_ascii_only():
     s = format_matrix(a, "Demo")
     assert "REAL #1" in s and "rank-CI" in s
     s.encode("cp1252")   # must not raise — ASCII-safe on Windows consoles
+
+
+def test_single_model_graceful():
+    a = audit_matrix({"solo": set(range(30))}, n_boot=50)
+    assert a.n_models == 1 and a.tie_group == ["solo"]
+    assert "one submission" in a.verdict.lower()
+
+
+def test_identical_models_all_tie():
+    same = {n: set(range(50)) for n in ("A", "B", "C")}
+    a = audit_matrix(same, n_boot=150)
+    assert not a.top_resolved
+    assert len(a.tie_group) == 3          # perfectly tied -> all in the group
+
+
+def test_minimum_two_items():
+    a = audit_matrix({"A": {0, 1}, "B": {0}}, n_boot=100)
+    assert a.leader == "A" and a.n_items == 2
+
+
+def test_errors_are_friendly():
+    import pytest as _p
+    with _p.raises(ValueError):
+        audit_matrix({"A": set()}, n_boot=10)        # <2 items
+    with _p.raises(ValueError):
+        audit_pairwise([("A", "A")][:0])              # no battles / <2 players
