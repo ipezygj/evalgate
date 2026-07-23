@@ -29,6 +29,7 @@ from .leaderboard import (
     latent_dimensions,
     mcnemar_p,
 )
+from .format import format_matrix, format_pairwise, format_dimensions
 
 __version__ = "0.4.0"
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     # whole-leaderboard audits (raw per-item / pairwise data)
     "audit_matrix", "audit_pairwise", "latent_dimensions", "mcnemar_p",
     "MatrixAudit", "PairwiseAudit", "Dimensionality",
+    "format_matrix", "format_pairwise", "format_dimensions",
 ]

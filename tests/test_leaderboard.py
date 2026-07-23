@@ -127,3 +127,19 @@ def test_errors_are_friendly():
         audit_matrix({"A": set()}, n_boot=10)        # <2 items
     with _p.raises(ValueError):
         audit_pairwise([("A", "A")][:0])              # no battles / <2 players
+
+
+def test_determinism_same_seed_same_result():
+    # the package's core promise: fixed seed -> identical output
+    data = {"A": set(range(120)), "B": set(range(90)), "C": set(range(70)), "D": set(range(40))}
+    a1 = audit_matrix(data, n_boot=300, seed=42)
+    a2 = audit_matrix(data, n_boot=300, seed=42)
+    assert a1.verdict == a2.verdict
+    assert a1.p_top_is_1 == a2.p_top_is_1 and a1.stay_frac == a2.stay_frac
+    assert [(r.model, r.rank_lo, r.rank_hi, r.p_is_1) for r in a1.rows] == \
+           [(r.model, r.rank_lo, r.rank_hi, r.p_is_1) for r in a2.rows]
+
+
+def test_public_api_exports_format():
+    import evalgate
+    assert hasattr(evalgate, "format_matrix") and hasattr(evalgate, "audit_matrix")
