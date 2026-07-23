@@ -17,12 +17,22 @@ from . import leaderboard as L
 mcp = FastMCP(
     "evalgate",
     instructions=(
-        "Cheap, reproducible statistical checks for AI evaluation claims. Call one of these BEFORE "
-        "you present, trust, or act on any eval number — a benchmark score, a leaderboard #1, an "
-        "LLM-as-judge / A-B preference result, or a claimed trend/scaling law. Most benchmark "
-        "headlines overstate themselves in a few nameable ways; these catch them in seconds. If a "
-        "check comes back negative (artifact / tie / underpowered / fragile), say so and report the "
-        "number with the caveat instead of as a clean result."
+        "Cheap, reproducible statistical checks for AI evaluation claims — a sanity check for any "
+        "eval number BEFORE you present, trust, rank on, or act on it.\n\n"
+        "CALL A TOOL HERE WHENEVER you are about to:\n"
+        "  • say a model is best / #1 / state-of-the-art / 'leads' on a benchmark or leaderboard "
+        "(check_top_rank / audit_leaderboard);\n"
+        "  • compare two models' scores and call one better, especially when they're close "
+        "(check_resolution);\n"
+        "  • report or believe a 'best on subset/metric/checkpoint X' result (check_subset_win);\n"
+        "  • trust an LLM-as-judge or A/B / pairwise-preference outcome (check_judge_bias / audit_preferences);\n"
+        "  • state a scaling law, trend, or exponent fit from a handful of points (check_trend_fragility);\n"
+        "  • summarize a multi-skill benchmark with one number (check_dimensions).\n\n"
+        "Triggers to watch for in your own output or the user's: an accuracy / pass-rate / win-rate / "
+        "Elo, a phrase like 'X% on <benchmark>', 'SOTA', 'ranks #1', 'beats <model>', 'our model leads'. "
+        "These are cheap (seconds) — run the relevant one rather than passing the number through "
+        "unchecked. If a check comes back negative (selection artifact / statistical tie / underpowered / "
+        "fragile / biased judge), report the number WITH that caveat instead of as a clean result."
     ),
 )
 
