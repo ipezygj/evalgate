@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evalgate"
-version = "0.2.0"
-description = "Dependency-free statistical checks for AI eval claims: multiple-comparisons correction, judge-bias tests, and leave-one-out fragility."
+version = "0.3.0"
+description = "Dependency-free statistical checks for AI eval claims (multiple-comparisons, judge-bias, resolution, fragility) — as a CLI and an MCP server an agent calls before trusting a benchmark number."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -13,6 +13,7 @@ authors = [{ name = "Ilpo Vaatainen" }]
 keywords = [
     "llm", "evaluation", "benchmark", "judge-bias", "statistics",
     "multiple-comparisons", "mlops", "reproducibility", "eval",
+    "mcp", "model-context-protocol", "agent", "agent-tools", "ai-agents",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -22,6 +23,11 @@ classifiers = [
 ]
 dependencies = []
 
+# The checks are zero-dependency. The MCP server (for agents) needs the `mcp` package:
+#   pip install "evalgate[mcp]"
+[project.optional-dependencies]
+mcp = ["mcp>=1.2"]
+
 [project.urls]
 Homepage = "https://ipezygj.github.io/eval-audit-site/"
 Book = "https://leanpub.com/measurednotbelieved"
@@ -29,6 +35,7 @@ Source = "https://github.com/ipezygj/evalgate"
 
 [project.scripts]
 evalgate = "evalgate.cli:main"
+evalgate-mcp = "evalgate.mcp_server:main"
 
 [tool.setuptools]
 packages = ["evalgate"]

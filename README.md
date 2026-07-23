@@ -12,6 +12,42 @@ pip install git+https://github.com/ipezygj/evalgate
 
 ---
 
+## Use it as an MCP tool (for agents)
+
+If you're an AI agent — or you run one (Claude, Cursor, Claude Code, Windsurf…) — evalgate ships an
+**MCP server** so the model can *call these checks itself* before it trusts, reports, or acts on any
+eval number: a benchmark score, a leaderboard #1, an LLM-as-judge verdict, or a claimed trend.
+
+```bash
+pip install "evalgate[mcp] @ git+https://github.com/ipezygj/evalgate"
+```
+
+Add it to your MCP client (e.g. `claude_desktop_config.json` / Cursor / Claude Code):
+
+```json
+{
+  "mcpServers": {
+    "evalgate": { "command": "evalgate-mcp" }
+  }
+}
+```
+
+Tools the agent gets, each with a "call this when…" description it can reason about:
+
+| tool | the agent calls it before… |
+|---|---|
+| `check_top_rank` | claiming a model is #1 / SOTA on a benchmark (is the top rank real or a tie?) |
+| `check_subset_win` | trusting a "best on subset/metric X" claim (look-elsewhere correction) |
+| `check_judge_bias` | trusting an LLM-as-judge / A-B preference result (length / self-preference / position bias) |
+| `check_resolution` | calling one of two close models better (can the benchmark even tell them apart?) |
+| `check_trend_fragility` | reporting a fitted trend / scaling exponent (does one point carry it?) |
+
+The point: an agent that produces an eval number should sanity-check it, and now it can — in one
+call, with a plain verdict and a recommendation. Reproducible, zero-dependency checks (the `mcp`
+extra is only for the server transport).
+
+---
+
 ## The four checks
 
 ### 1. "We lead on subset X" — corrected for look-elsewhere
