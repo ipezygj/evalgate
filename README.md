@@ -32,6 +32,8 @@ Add it to your MCP client (e.g. `claude_desktop_config.json` / Cursor / Claude C
 }
 ```
 
+<sub>MCP registry identity — `mcp-name: io.github.ipezygj/evalgate`</sub>
+
 Tools the agent gets, each with a "call this when…" description it can reason about:
 
 | tool | the agent calls it before… |

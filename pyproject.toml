@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # stay `evalgate` / `evalgate-mcp` (distribution name != import name is standard, cf. scikit-learn).
 [project]
 name = "eval-integrity"
-version = "0.4.0"
+version = "0.4.1"
 description = "Dependency-free statistical checks for AI eval claims (multiple-comparisons, judge-bias, resolution, fragility) — as a CLI and an MCP server an agent calls before trusting a benchmark number."
 readme = "README.md"
 requires-python = ">=3.9"

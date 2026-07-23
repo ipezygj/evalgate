@@ -1,15 +1,14 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ipezygj/evalgate",
-  "description": "Statistical checks an agent runs BEFORE trusting an AI eval number: is the #1 real or a tie, LLM-as-judge bias, subset-win (look-elsewhere) correction, two-model resolution, and trend fragility.",
+  "description": "Statistical checks an agent runs before trusting an AI eval number (is #1 real, judge bias, more).",
   "repository": { "url": "https://github.com/ipezygj/evalgate", "source": "github" },
-  "version": "0.4.0",
+  "version": "0.4.1",
   "packages": [
     {
-      "registry_type": "pypi",
+      "registryType": "pypi",
       "identifier": "eval-integrity",
-      "version": "0.4.0",
-      "runtime_hint": "python",
+      "version": "0.4.1",
       "transport": { "type": "stdio" }
     }
   ]
