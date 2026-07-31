@@ -12,7 +12,10 @@ this project uses [Semantic Versioning](https://semver.org/).
   label. Returns that label, what answering it to everything scores, and how many published entries
   it outscores. On HELM classic's MMLU college_chemistry: `D` at **0.4100** against a 0.2633 board
   median, beating 22 of 29 runs, with 11 runs below the 0.2500 a coin flip would earn.
-- Ties between labels break deterministically, so the answer does not depend on dict ordering.
+- Ties between labels break deterministically **on the smallest label**. The site calculator
+  implements the same rule in JavaScript, and a parity check found the two disagreeing (Python
+  took the largest, JS the smallest) before either shipped to a user; two deterministic rules that
+  disagree are no better than one random rule.
 
 ## [0.5.0]
 

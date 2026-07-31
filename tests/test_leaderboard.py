@@ -297,6 +297,13 @@ def test_constant_baseline_accepts_non_string_labels_and_rejects_empty():
 
 
 def test_constant_baseline_tie_between_labels_is_deterministic():
-    """Two labels tied at the top must not depend on dict ordering."""
+    """Tied labels resolve to the smallest, always — and the browser copy agrees.
+
+    The site's calculator implements this rule a second time in JavaScript. When the
+    two disagreed (Python took the largest label, JS the smallest) the parity check
+    caught it; both now take the smallest, because two deterministic rules that
+    disagree are no better than one random rule.
+    """
     picks = {lb.constant_baseline(["B", "A", "B", "A"]).answer for _ in range(5)}
-    assert picks == {"B"}, f"tie-break drifted: {picks}"
+    assert picks == {"A"}, f"tie-break drifted: {picks}"
+    assert lb.constant_baseline(["A", "B", "C", "D"] * 25).answer == "A"

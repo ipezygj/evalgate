@@ -291,7 +291,10 @@ def constant_baseline(key: Sequence, scores: Sequence[float] | None = None) -> C
     counts = {}
     for label in items:
         counts[label] = counts.get(label, 0) + 1
-    answer = max(counts, key=lambda k: (counts[k], str(k)))
+    # Ties break on the SMALLEST label, not the largest: "the first of the most common"
+    # is the reading a person expects, and the browser copy in the calculator does the
+    # same. Two deterministic rules that disagree are as bad as a random one.
+    answer = min(sorted(counts, key=str), key=lambda k: -counts[k])
     n = len(items)
     best = counts[answer] / n
     chance = 1.0 / len(counts)
