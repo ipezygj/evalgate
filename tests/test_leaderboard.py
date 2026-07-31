@@ -307,3 +307,52 @@ def test_constant_baseline_tie_between_labels_is_deterministic():
     picks = {lb.constant_baseline(["B", "A", "B", "A"]).answer for _ in range(5)}
     assert picks == {"A"}, f"tie-break drifted: {picks}"
     assert lb.constant_baseline(["A", "B", "C", "D"] * 25).answer == "A"
+
+
+# --- stderr_audit: do published error bars survive recomputation? ------------------
+
+def _se(p, n, d=1):
+    return (p * (1 - p) / (n - d)) ** 0.5
+
+
+def test_stderr_audit_reproduces_consistent_rows():
+    rows = [("a", 0.5, 100, _se(0.5, 100)), ("b", 0.25, 50, _se(0.25, 50))]
+    a = lb.stderr_audit(rows)
+    assert a.reproduced == 2 and not a.impossible_zero and not a.mismatched
+    assert a.verdict.startswith("REPRODUCED")
+
+
+def test_stderr_audit_flags_a_zero_on_an_interior_score():
+    """The finding: 0.0 beside a score that is neither 0 nor 1 claims certainty."""
+    rows = [("ok", 0.5, 100, _se(0.5, 100)), ("math", 0.3125, 64, 0.0)]
+    a = lb.stderr_audit(rows)
+    assert a.impossible_zero == [("math", 0.3125, 64)]
+    assert a.reproduced == 1
+    assert a.verdict.startswith("FALSE PRECISION")
+    assert "MISSING" in a.recommendation
+
+
+def test_stderr_audit_allows_a_zero_at_the_boundary():
+    """A score of exactly 0 or 1 CAN have a zero error bar — every item agreed."""
+    a = lb.stderr_audit([("all-right", 1.0, 40, 0.0), ("all-wrong", 0.0, 40, 0.0)])
+    assert not a.impossible_zero
+    assert a.reproduced == 2
+
+
+def test_stderr_audit_says_unpinned_when_the_denominator_is_wrong():
+    """Picking the wrong convention makes every row mismatch — say that, don't cry fraud."""
+    rows = [(f"r{i}", 0.5, 100, _se(0.5, 100, d=0)) for i in range(5)]
+    a = lb.stderr_audit(rows, denominator="n-1")
+    assert a.reproduced == 0 and a.verdict.startswith("UNPINNED")
+    assert lb.stderr_audit(rows, denominator="n").verdict.startswith("REPRODUCED")
+
+
+def test_stderr_audit_rejects_impossible_input():
+    with pytest.raises(ValueError):
+        lb.stderr_audit([("x", 1.5, 100, 0.01)])
+    with pytest.raises(ValueError):
+        lb.stderr_audit([("x", 0.5, 1, 0.01)])
+    with pytest.raises(ValueError):
+        lb.stderr_audit([("x", 0.5, 100)])
+    with pytest.raises(ValueError):
+        lb.stderr_audit([("x", 0.5, 100, 0.01)], denominator="nplus")

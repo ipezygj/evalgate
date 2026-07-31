@@ -322,6 +322,71 @@ def constant_baseline(key: Sequence, scores: Sequence[float] | None = None) -> C
     return out
 
 
+@dataclass
+class StderrAudit:
+    """Whether published error bars survive being recomputed from the scores themselves."""
+    n_rows: int
+    impossible_zero: list      # rows claiming no uncertainty about an interior score
+    mismatched: list           # rows whose stderr is not what p and n imply
+    reproduced: int            # rows that match to the tolerance
+    verdict: str = ""
+    recommendation: str = ""
+
+
+def stderr_audit(rows: Sequence, tol: float = 5e-7, denominator: str = "n-1") -> StderrAudit:
+    """Recompute every published standard error from the score and the item count.
+
+    A standard error of exactly 0 next to a score strictly between 0 and 1 is not a small
+    error bar — it says a rerun on different items would return the identical number, which
+    for a proportion cannot be true. Anything downstream that reads uncertainty from these
+    files (a meta-analysis, a model-selection filter, a paper's bars) then propagates a
+    false precision instead of an unknown.
+
+    `rows` are (label, score, n, published_stderr). Scores are proportions in [0,1].
+    `denominator` is "n-1" (the harness convention) or "n"; the wrong one shows up as
+    every row mismatching, which is how you tell you picked wrong.
+    """
+    if denominator not in ("n-1", "n"):
+        raise ValueError("denominator must be 'n-1' or 'n'")
+    zeros, bad, ok = [], [], 0
+    for row in rows:
+        try:
+            label, p, n, se = row
+        except (TypeError, ValueError):
+            raise ValueError("each row must be (label, score, n, published_stderr)")
+        p, n, se = float(p), int(n), float(se)
+        if not 0.0 <= p <= 1.0:
+            raise ValueError(f"{label}: score {p} is not a proportion in [0,1]")
+        if n < 2:
+            raise ValueError(f"{label}: n={n} is too small to have a standard error")
+        d = n - 1 if denominator == "n-1" else n
+        want = (p * (1 - p) / d) ** 0.5
+        if se == 0.0 and 0.0 < p < 1.0:
+            zeros.append((label, p, n))
+        elif abs(se - want) <= tol:
+            ok += 1
+        else:
+            bad.append((label, se, round(want, 8)))
+
+    out = StderrAudit(len(rows), zeros, bad, ok)
+    if zeros:
+        out.verdict = (f"FALSE PRECISION: {len(zeros)} of {len(rows)} rows publish stderr 0 "
+                       f"for a score strictly between 0 and 1")
+        out.recommendation = ("Treat those as MISSING, not certain — a blank is honest and a zero "
+                              "is a claim. One-line filter: drop se == 0 where 0 < score < 1.")
+    elif bad and ok == 0:
+        out.verdict = (f"UNPINNED: no row matches under the '{denominator}' denominator; "
+                       "try the other one before reading anything into the mismatches")
+        out.recommendation = f"Re-run with denominator={'n' if denominator == 'n-1' else 'n-1'!r}."
+    elif bad:
+        out.verdict = f"MISMATCHED: {len(bad)} of {len(rows)} rows disagree with p and n"
+        out.recommendation = "Ask what those rows were computed from; the rest of the file pins the formula."
+    else:
+        out.verdict = f"REPRODUCED: all {ok} rows match sqrt(p(1-p)/{denominator})"
+        out.recommendation = "Error bars are consistent with the scores; nothing to flag."
+    return out
+
+
 def _significance_group(names, vecs, items, leader):
     """Models NOT separable from the leader by a paired McNemar test (p>0.05), leader first."""
     idx = {m: i for i, m in enumerate(names)}

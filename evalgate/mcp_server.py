@@ -184,6 +184,34 @@ def _as_fraction(x: float, name: str) -> float:
 
 
 @mcp.tool()
+def check_published_error_bars(rows: list, denominator: str = "n-1") -> dict:
+    """Do a leaderboard's PUBLISHED error bars survive being recomputed from its own scores?
+
+    Pass rows as [label, score, n_items, published_stderr]. Recomputes sqrt(p(1-p)/(n-1)) and
+    reports three things: rows claiming a standard error of exactly 0 for a score strictly
+    between 0 and 1 (impossible — that says a rerun returns the identical number), rows whose
+    error bar disagrees with what the score and item count imply, and rows that reproduce.
+
+    Use when: you consume published eval files for uncertainty — meta-analysis, model
+    selection, error bars in a paper. On Open LLM Leaderboard v2, 423 published records carry
+    a zero of this kind. A score of exactly 0 or 1 may legitimately have a zero.
+    """
+    try:
+        a = L.stderr_audit([tuple(r) for r in rows], denominator=denominator)
+    except Exception as e:
+        return {"error": str(e),
+                "hint": "rows are [label, score(0-1), n_items, published_stderr]; denominator 'n-1' or 'n'"}
+    return {
+        "verdict": a.verdict,
+        "recommendation": a.recommendation,
+        "n_rows": a.n_rows,
+        "reproduced": a.reproduced,
+        "impossible_zero": [{"label": l, "score": p, "n": n} for l, p, n in a.impossible_zero],
+        "mismatched": [{"label": l, "published": s, "implied": w} for l, s, w in a.mismatched],
+    }
+
+
+@mcp.tool()
 def check_constant_baseline(answer_key: list, scores: list | None = None) -> dict:
     """The FLOOR a multiple-choice benchmark is really read against, and who scores below it.
 

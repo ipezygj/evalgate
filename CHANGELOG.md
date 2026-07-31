@@ -3,6 +3,18 @@
 All notable changes to `evalgate`. Format loosely follows [Keep a Changelog](https://keepachangelog.com/);
 this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.7.0]
+
+### Added — do published error bars survive recomputation?
+- `evalgate.leaderboard.stderr_audit(rows)` and MCP tool `check_published_error_bars`. Recomputes
+  every published standard error from the score and item count, and separates three cases: a stderr
+  of exactly 0 beside a score strictly between 0 and 1 (impossible — it claims a rerun returns the
+  identical number), a stderr that simply disagrees with what p and n imply, and a row that
+  reproduces. On Open LLM Leaderboard v2, **423 published records** carry a zero of the first kind.
+- Picking the wrong denominator convention makes every row mismatch, so that case reports
+  **UNPINNED** and says to try the other one, rather than reporting a benchmark-wide discrepancy.
+- A score of exactly 0 or 1 may legitimately carry a zero; only interior scores are flagged.
+
 ## [0.6.0]
 
 ### Added — the floor a leaderboard is really read against

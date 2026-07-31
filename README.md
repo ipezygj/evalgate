@@ -52,6 +52,7 @@ deeper tools do the real audit instead of an approximation:
 |---|---|
 | `audit_leaderboard` | it has per-item results ({model: [solved item-ids]}) — the real version of `check_top_rank`: bootstrapped rank confidence intervals, the paired-McNemar tie group, resolvable tiers, split-half stability |
 | `audit_preferences` | a ranking comes from pairwise votes ([winner, loser] battles) — Bradley-Terry rank CIs **and** a Condorcet check that preferences are transitive, not rock-paper-scissors cycles |
+| `check_published_error_bars` | you consume a leaderboard's published files for uncertainty — recomputes every standard error from the score and item count, and flags the impossible ones (0.0 beside an interior score) separately from the merely mismatched |
 | `check_constant_baseline` | a multiple-choice benchmark ranks models and you have the answer key — the best fixed answer, what it scores, and how many published entries score below that floor |
 | `check_winners_curse` | someone announces a #1 and you can see the scores and their error bars but not the raw results — how often a rerun crowns a different model, and how many points the winning score is inflated by having been selected as the maximum |
 | `check_dimensions` | deciding whether one number fairly summarizes a multi-skill benchmark — counts the latent skills in the result matrix (eigenspectrum vs a shuffled null) |
