@@ -52,6 +52,7 @@ deeper tools do the real audit instead of an approximation:
 |---|---|
 | `audit_leaderboard` | it has per-item results ({model: [solved item-ids]}) — the real version of `check_top_rank`: bootstrapped rank confidence intervals, the paired-McNemar tie group, resolvable tiers, split-half stability |
 | `audit_preferences` | a ranking comes from pairwise votes ([winner, loser] battles) — Bradley-Terry rank CIs **and** a Condorcet check that preferences are transitive, not rock-paper-scissors cycles |
+| `check_winners_curse` | someone announces a #1 and you can see the scores and their error bars but not the raw results — how often a rerun crowns a different model, and how many points the winning score is inflated by having been selected as the maximum |
 | `check_dimensions` | deciding whether one number fairly summarizes a multi-skill benchmark — counts the latent skills in the result matrix (eigenspectrum vs a shuffled null) |
 
 The point: an agent that produces an eval number should sanity-check it, and now it can — in one
