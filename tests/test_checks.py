@@ -136,3 +136,29 @@ def test_mcp_accepts_percentages_and_refuses_the_ambiguous_one():
             == m.check_deployment_precision(0.95, 0.05, 0.02)["deployment_precision"])
     assert "ambiguous" in m.check_deployment_precision(0.95, 0.05, 1)["error"]
     assert "error" in m.check_deployment_precision(0.95, 0.05, 0)
+
+
+def test_mixed_magnitude_percentages_do_not_crown_the_worst_model():
+    """Regression: [95, 87, 1] as percentages must not read the 1 as 100%.
+
+    A per-value unit rule reported the weakest model as the leader, with the top rank
+    marked resolved — a confident wrong answer, which is the failure this tool exists
+    to catch in other people's numbers.
+    """
+    import evalgate.mcp_server as m
+    r = m.check_top_rank(models=["A", "B", "weak"], scores=[95, 87, 1], n_items=500)
+    assert r["leader"] == "A"
+    assert abs(r["leader_score"] - 0.95) < 1e-9
+
+
+def test_unit_inference_is_consistent_across_a_pair():
+    import evalgate.mcp_server as m
+    r = m.check_resolution(200, 85, 1)          # percentages
+    assert abs(r["score_a"] - 0.85) < 1e-9 and abs(r["score_b"] - 0.01) < 1e-9
+    r2 = m.check_resolution(200, 0.85, 0.83)    # fractions stay fractions
+    assert abs(r2["score_a"] - 0.85) < 1e-9 and abs(r2["score_b"] - 0.83) < 1e-9
+
+
+def test_out_of_range_scores_are_refused_not_guessed():
+    import evalgate.mcp_server as m
+    assert "error" in m.check_top_rank(models=["A"], scores=[140], n_items=10)

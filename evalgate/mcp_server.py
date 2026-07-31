@@ -50,7 +50,11 @@ def check_top_rank(models: list[str], scores: list[float], n_items: int) -> dict
     """
     if len(models) != len(scores) or len(models) < 2:
         return {"error": "need matching models[] and scores[] with >=2 entries"}
-    ps = [(m, s / 100.0 if s > 1 else float(s)) for m, s in zip(models, scores)]
+    try:
+        fr = _as_fractions(scores, "scores")
+    except ValueError as e:
+        return {"error": str(e)}
+    ps = list(zip(models, fr))
     ps.sort(key=lambda t: -t[1])
     lead_m, lead_p = ps[0]
     tie, rows = [lead_m], []
@@ -127,8 +131,10 @@ def check_resolution(n_items: int, score_a: float, score_b: float) -> dict:
 
     Use when: comparing two models whose scores are close, before calling one better.
     """
-    a = score_a / 100.0 if score_a > 1 else float(score_a)
-    b = score_b / 100.0 if score_b > 1 else float(score_b)
+    try:
+        a, b = _as_fractions([score_a, score_b], "scores")
+    except ValueError as e:
+        return {"error": str(e)}
     p = C.power_check(int(n_items), a, b)
     return {
         "n_items": p.n, "score_a": round(p.p1, 4), "score_b": round(p.p2, 4), "gap": round(p.diff, 4),
@@ -141,6 +147,22 @@ def check_resolution(n_items: int, score_a: float, score_b: float) -> dict:
         "recommendation": ("The gap is real." if p.significant else
                            "Don't rank these two — report them as tied, or use more test items."),
     }
+
+
+def _as_fractions(values, name: str) -> list[float]:
+    """Convert a group of scores to fractions, deciding the unit ONCE for the whole group.
+
+    Deciding per value is unsafe: given percentages [95, 87, 1] a per-value rule reads the
+    last one as 1.0 and reports the worst model as the leader — confidently, with a
+    "resolved" top rank. The unit is a property of the list, not of each number, so it is
+    inferred from the list: any value above 1 means the caller is speaking percentages.
+    """
+    vals = [float(v) for v in values]
+    if not vals:
+        raise ValueError(f"{name} is empty")
+    if any(v > 100 or v < 0 for v in vals):
+        raise ValueError(f"{name} must be scores in [0,1] or percentages in [0,100], got {vals}")
+    return [v / 100.0 for v in vals] if any(v > 1 for v in vals) else vals
 
 
 def _as_fraction(x: float, name: str) -> float:
