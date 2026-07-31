@@ -242,3 +242,14 @@ def test_selection_audit_accepts_per_model_errors_and_rejects_bad_input():
         lb.selection_audit([50.0], se=1.0)
     with pytest.raises(ValueError):
         lb.selection_audit([50.0, 49.0], se=-1.0)
+
+
+def test_selection_audit_tie_verdict_does_not_hinge_on_sampling_noise():
+    """Two identical models sit at exactly p=0.5, so a >=0.5 rule flips on the seed alone.
+
+    The margin has to decide it: a leader inside one standard error is unresolved
+    whichever side of the coin the simulation landed on.
+    """
+    verdicts = {lb.selection_audit([50.0, 50.0], se=5, trials=600, seed=s).verdict.split(":")[0]
+                for s in range(6)}
+    assert verdicts == {"COIN-FLIP-#1"}, f"verdict flipped with the seed: {verdicts}"

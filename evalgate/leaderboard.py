@@ -247,10 +247,14 @@ def selection_audit(scores: Sequence[float], se, top_k: int = 5,
     p_wrong = wrong / trials
     audit = SelectionAudit(n, round(gap, 6), round(gap_in_se, 4), round(p_wrong, 4),
                            round(inflation / trials, 4), round(in_top / trials, 4), k, trials)
+    # A tie must not be decided by which side of 50% the simulation happens to land on:
+    # two identical models sit at exactly 0.5, so sampling alone flips the verdict. The
+    # margin decides it — a leader inside one standard error is not resolved, whatever
+    # p_wrong came out as.
     if gap_in_se >= 3:
         audit.verdict = "REAL-#1: the leader is clear of its own measurement error"
-    elif p_wrong >= 0.5:
-        audit.verdict = "COIN-FLIP-#1: a rerun crowns a different model more often than not"
+    elif gap_in_se < 1 or p_wrong >= 0.5:
+        audit.verdict = "COIN-FLIP-#1: the leader is inside its own error bar; report a tie group"
     else:
         audit.verdict = "THIN-#1: the leader usually survives a rerun, but not comfortably"
     return audit
