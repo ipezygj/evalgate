@@ -143,6 +143,61 @@ def check_resolution(n_items: int, score_a: float, score_b: float) -> dict:
     }
 
 
+def _as_fraction(x: float, name: str) -> float:
+    """Accept either a fraction (0.05) or a percentage (5) — but refuse to guess at 1.
+
+    The convenience heuristic used elsewhere ("greater than 1 means percent") is ambiguous
+    at exactly 1: an agent writing `prevalence=1` may mean 1% or 100%, and those differ by
+    two orders of magnitude. Guessing wrong here silently changes the answer, so this asks
+    instead of assuming.
+    """
+    x = float(x)
+    if x == 1:
+        raise ValueError(f"{name}=1 is ambiguous: pass 0.01 for 1%, or 0.99 for 99%")
+    if 0 < x < 1:
+        return x
+    if 1 < x <= 100:
+        return x / 100.0
+    raise ValueError(f"{name} must be a fraction in (0,1) or a percentage in (1,100], got {x}")
+
+
+@mcp.tool()
+def check_deployment_precision(tpr: float, fpr: float, prevalence: float) -> dict:
+    """What a detector's PRECISION BECOMES where the target is rare. Give the operating point you
+    will actually ship (tpr, fpr — % or 0-1) and the prevalence you expect in the field. Returns the
+    precision an operator will really see, and how many false alarms that means per genuine catch.
+
+    Use when: a model is described by AUC or accuracy on a balanced benchmark but will run somewhere
+    the interesting class is rare — fraud, security triage, moderation, screening, defect finding.
+    Do NOT pass an AUC as tpr: AUC summarises the whole curve and does not pin down a threshold.
+    """
+    try:
+        t = _as_fraction(tpr, "tpr")
+        f = _as_fraction(fpr, "fpr")
+        pv = _as_fraction(prevalence, "prevalence")
+    except ValueError as e:
+        return {"error": str(e),
+                "hint": "tpr/fpr/prevalence each take a fraction (0.95) or a percentage (95)."}
+    r = C.base_rate_precision(t, f, pv)
+    collapses = r.precision < 0.5 <= r.benchmark_precision
+    return {
+        "tpr": round(r.tpr, 4), "fpr": round(r.fpr, 4), "prevalence": r.prevalence,
+        "deployment_precision": round(r.precision, 4),
+        "benchmark_precision": round(r.benchmark_precision, 4),
+        "false_alarms_per_true_catch": round(r.false_per_true, 3),
+        "npv": round(r.npv, 6),
+        "collapses_in_deployment": collapses,
+        "verdict": (f"At {r.prevalence:.3g} prevalence this detector is right {r.precision:.1%} of the "
+                    f"times it fires ({r.false_per_true:.3g} false alarms per true catch), while the same "
+                    f"operating point reads {r.benchmark_precision:.1%} on a balanced set."),
+        "recommendation": ("Report precision at the deployment base rate next to the benchmark score; "
+                           "a threshold chosen on balanced data is usually the wrong threshold here."
+                           if collapses else
+                           "Precision holds up at this base rate — state it explicitly anyway, since "
+                           "readers cannot derive it from the benchmark number."),
+    }
+
+
 @mcp.tool()
 def check_trend_fragility(xs: list[float], ys: list[float], threshold: float | None = None) -> dict:
     """Is a reported trend / slope / scaling exponent robust, or does one data point carry it? Give

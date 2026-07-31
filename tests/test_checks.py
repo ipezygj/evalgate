@@ -118,3 +118,21 @@ def test_base_rate_rejects_impossible_inputs():
     for bad in ((1.2, 0.05, 0.1), (0.9, -0.1, 0.1), (0.9, 0.05, 0.0), (0.9, 0.05, 1.0)):
         with pytest.raises(ValueError):
             base_rate_precision(*bad)
+
+
+def test_mcp_deployment_precision_matches_library():
+    """The agent-facing tool must not drift from the library it wraps."""
+    import evalgate.mcp_server as m
+    from evalgate import base_rate_precision
+    for tpr, fpr, pv in [(0.95, 0.05, 0.01), (0.8, 0.1, 0.02), (0.7, 0.3, 0.001)]:
+        got = m.check_deployment_precision(tpr, fpr, pv)["deployment_precision"]
+        assert got == round(base_rate_precision(tpr, fpr, pv).precision, 4)
+
+
+def test_mcp_accepts_percentages_and_refuses_the_ambiguous_one():
+    """5 means 5%, 0.05 means 5% — but a bare 1 could be either 1% or 100%, so it must ask."""
+    import evalgate.mcp_server as m
+    assert (m.check_deployment_precision(95, 5, 2)["deployment_precision"]
+            == m.check_deployment_precision(0.95, 0.05, 0.02)["deployment_precision"])
+    assert "ambiguous" in m.check_deployment_precision(0.95, 0.05, 1)["error"]
+    assert "error" in m.check_deployment_precision(0.95, 0.05, 0)
