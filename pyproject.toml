@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # stay `evalgate` / `evalgate-mcp` (distribution name != import name is standard, cf. scikit-learn).
 [project]
 name = "eval-integrity"
-version = "0.4.2"
+version = "0.4.3"
 description = "Dependency-free statistical checks for AI eval claims (multiple-comparisons, judge-bias, resolution, fragility) — as a CLI and an MCP server an agent calls before trusting a benchmark number."
 readme = "README.md"
 requires-python = ">=3.10"   # the [mcp] extra pulls mcp>=1.2, which requires 3.10+;
@@ -24,12 +24,17 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Intended Audience :: Science/Research",
 ]
-dependencies = []
+# `mcp` is a hard dependency, not an extra. It was an extra for a while, on the reasoning
+# that the statistical checks are zero-dependency and only the MCP server needs it. That
+# reasoning was right about the code and wrong about the world: every installer that did
+# not spell out the extra — a registry entry, a container build, a user typing the obvious
+# command — produced a package whose server dies at import. An extra that is required for
+# the advertised entry point to run is not optional.
+dependencies = ["mcp>=1.2,<2"]   # 2.0 removed mcp.server.fastmcp, which mcp_server.py imports
 
-# The checks are zero-dependency. The MCP server (for agents) needs the `mcp` package:
-#   pip install "evalgate[mcp]"
+# Kept as an empty alias so existing `pip install "eval-integrity[mcp]"` keeps working.
 [project.optional-dependencies]
-mcp = ["mcp>=1.2,<2"]   # 2.0 removed mcp.server.fastmcp, which mcp_server.py imports
+mcp = []
 
 [project.urls]
 Homepage = "https://ipezygj.github.io/eval-audit-site/"
