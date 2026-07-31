@@ -19,6 +19,8 @@ from .checks import (
     power_check,
     power_law_exponent,
     sidak,
+    base_rate_precision,
+    BaseRate,
 )
 from .leaderboard import (
     MatrixAudit,
@@ -38,6 +40,7 @@ __all__ = [
     "bias_rate", "binomial_test", "Bias",
     "leave_one_out", "ols_slope", "power_law_exponent", "Fragility",
     "power_check", "min_detectable_effect", "Power",
+    "base_rate_precision", "BaseRate",
     # whole-leaderboard audits (raw per-item / pairwise data)
     "audit", "audit_matrix", "audit_pairwise", "latent_dimensions", "mcnemar_p",
     "MatrixAudit", "PairwiseAudit", "Dimensionality",

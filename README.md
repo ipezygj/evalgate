@@ -106,6 +106,7 @@ A leaderboard orders two models by a two-point accuracy gap on a finite test set
 
 ```bash
 evalgate power --n 200 --p1 0.85 --p2 0.83
+evalgate baserate --tpr 0.95 --fpr 0.05 --prevalence 0.01   # what precision becomes where the target is rare
 # gap=+0.02 on n=200 (NOT significant, p=0.585); MDE at 80% power=0.103 -> UNDERPOWERED (gap < MDE)
 ```
 ```python

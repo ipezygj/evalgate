@@ -77,3 +77,44 @@ def test_fits():
     assert abs(s - 2.0) < 1e-9 and abs(b - 1.0) < 1e-9 and abs(r2 - 1.0) < 1e-9
     a, r2 = power_law_exponent([1, 2, 4, 8], [1, 4, 16, 64])
     assert abs(a - 2.0) < 1e-9 and abs(r2 - 1.0) < 1e-9
+
+
+# --------------------------------------------------------------------------- #
+# base-rate reprojection: precision is a property of the model AND the world
+# --------------------------------------------------------------------------- #
+
+def test_base_rate_collapse_with_rarity():
+    """The same operating point gets worse as the target gets rarer."""
+    from evalgate import base_rate_precision
+    balanced = base_rate_precision(0.95, 0.05, 0.5)
+    clinic = base_rate_precision(0.95, 0.05, 0.01)
+    screening = base_rate_precision(0.95, 0.05, 0.001)
+    assert balanced.precision > clinic.precision > screening.precision
+    assert abs(balanced.precision - 0.95) < 1e-9
+    assert abs(clinic.precision - 0.16101694915254236) < 1e-9
+    # at 0.1% prevalence the detector is wrong far more often than it is right
+    assert screening.precision < 0.05
+    assert screening.false_per_true > 20
+
+
+def test_base_rate_matches_bayes_directly():
+    """Cross-check against the closed form rather than trusting the implementation."""
+    from evalgate import base_rate_precision
+    tpr, fpr, pi = 0.8, 0.1, 0.02
+    got = base_rate_precision(tpr, fpr, pi).precision
+    want = (tpr * pi) / (tpr * pi + fpr * (1 - pi))
+    assert abs(got - want) < 1e-12
+
+
+def test_base_rate_perfect_detector_is_prevalence_independent():
+    from evalgate import base_rate_precision
+    for pi in (0.5, 0.01, 1e-6):
+        assert abs(base_rate_precision(1.0, 0.0, pi).precision - 1.0) < 1e-12
+
+
+def test_base_rate_rejects_impossible_inputs():
+    import pytest
+    from evalgate import base_rate_precision
+    for bad in ((1.2, 0.05, 0.1), (0.9, -0.1, 0.1), (0.9, 0.05, 0.0), (0.9, 0.05, 1.0)):
+        with pytest.raises(ValueError):
+            base_rate_precision(*bad)

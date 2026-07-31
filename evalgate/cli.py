@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .checks import bias_rate, correct_best_of, leave_one_out, power_check, power_law_exponent
+from .checks import bias_rate, correct_best_of, leave_one_out, power_check, power_law_exponent, base_rate_precision
 
 
 def _read_xy(path: str) -> tuple[list[float], list[float]]:
@@ -46,6 +46,11 @@ def main(argv: list[str] | None = None) -> int:
     l.add_argument("--threshold", type=float, default=None,
                    help="flag if dropping a point crosses this value (e.g. 1.0)")
 
+    br = sub.add_parser("baserate", help="what precision becomes at the prevalence you will actually face")
+    br.add_argument("--tpr", type=float, required=True, help="true-positive rate at your operating point")
+    br.add_argument("--fpr", type=float, required=True, help="false-positive rate at the same point")
+    br.add_argument("--prevalence", type=float, required=True, help="how often the target actually occurs, e.g. 0.01")
+
     pw = sub.add_parser("power", help="can this sample resolve the gap? (min detectable effect)")
     pw.add_argument("--n", type=int, required=True, help="items per model")
     pw.add_argument("--p1", type=float, required=True, help="accuracy/rate of model 1")
@@ -68,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
         print(leave_one_out(xs, ys, **kw))
     elif args.cmd == "power":
         print(power_check(args.n, args.p1, args.p2, args.alpha, args.power))
+    elif args.cmd == "baserate":
+        print(base_rate_precision(args.tpr, args.fpr, args.prevalence))
     return 0
 
 

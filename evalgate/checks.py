@@ -283,6 +283,53 @@ def power_check(n: int, p1: float, p2: float, alpha: float = 0.05,
     return Power(n, p1, p2, diff, pval, pval < alpha, mde, abs(diff) >= mde, alpha, power)
 
 
+@dataclass
+class BaseRate:
+    tpr: float                 # sensitivity at the chosen operating point
+    fpr: float                 # 1 - specificity at the same point
+    prevalence: float          # how often the target class actually occurs
+    precision: float           # P(target | flagged) - the number an operator lives with
+    npv: float                 # P(not target | not flagged)
+    false_per_true: float      # false alarms raised per genuine catch
+    benchmark_precision: float # what the same detector shows on a balanced set
+
+    def __str__(self) -> str:
+        return (f"prevalence={self.prevalence:.3g}: precision={self.precision:.1%} "
+                f"({self.false_per_true:.3g} false alarms per true catch); "
+                f"the same detector reads {self.benchmark_precision:.1%} on a balanced set")
+
+
+def base_rate_precision(tpr: float, fpr: float, prevalence: float) -> BaseRate:
+    """What a detector's precision becomes at the prevalence it will actually meet.
+
+    Precision is not a property of the model alone - it is a property of the model
+    and how often the target occurs. A benchmark measures on a roughly balanced set;
+    deployment is usually nowhere near balanced. Anywhere the interesting class is
+    rare, `fpr * (1 - prevalence)` is applied to a very large population and can
+    swamp the true positives entirely, with nothing in the reported score to warn you.
+
+    Takes an explicit operating point (tpr, fpr) rather than an AUC, because AUC
+    summarises the whole curve and does not pin down the threshold you will ship.
+
+    >>> round(base_rate_precision(0.95, 0.05, 0.01).precision, 4)
+    0.1610
+    """
+    if not (0.0 <= tpr <= 1.0 and 0.0 <= fpr <= 1.0):
+        raise ValueError("need 0<=tpr<=1 and 0<=fpr<=1")
+    if not 0.0 < prevalence < 1.0:
+        raise ValueError("need 0<prevalence<1")
+    hits = tpr * prevalence
+    false_alarms = fpr * (1.0 - prevalence)
+    flagged = hits + false_alarms
+    precision = hits / flagged if flagged > 0 else 0.0
+    misses = (1.0 - tpr) * prevalence
+    clean = (1.0 - fpr) * (1.0 - prevalence)
+    npv = clean / (clean + misses) if (clean + misses) > 0 else 0.0
+    per_true = (false_alarms / hits) if hits > 0 else float("inf")
+    bench = tpr / (tpr + fpr) if (tpr + fpr) > 0 else 0.0   # the same point at 50/50
+    return BaseRate(tpr, fpr, prevalence, precision, npv, per_true, bench)
+
+
 # --------------------------------------------------------------------------- #
 # self-test: reproduces the three public case studies
 # --------------------------------------------------------------------------- #
