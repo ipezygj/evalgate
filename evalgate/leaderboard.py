@@ -191,6 +191,71 @@ def _winners_curse(scores, m):
     return se * _expected_max_normal(K)
 
 
+@dataclass
+class SelectionAudit:
+    """What selecting a maximum does to a published leaderboard."""
+    n_models: int
+    gap: float                 # leader's margin over #2, in score units
+    gap_in_se: float           # the same margin in units of the leader's own SE
+    p_wrong_winner: float      # how often a rerun crowns someone else
+    score_inflation: float     # points by which the winning score overstates the winner
+    p_true_best_in_top: float  # chance the true best model is anywhere in the printed top-k
+    top_k: int
+    trials: int
+    verdict: str = ""
+
+
+def selection_audit(scores: Sequence[float], se, top_k: int = 5,
+                    trials: int = 4000, seed: int = 0) -> SelectionAudit:
+    """Is the announced #1 the best model, or the luckiest one — from published numbers alone.
+
+    Ranking selects on score, and a score is ability plus measurement error. Sorting
+    cannot separate the two, so among models close in ability the one that rises is
+    disproportionately the one whose error pointed up. Two consequences, both measured
+    here: the crown often belongs to someone else, and the winning score is inflated by
+    the expected maximum of the errors that were competing.
+
+    Needs only what a leaderboard prints — the scores and their standard errors — so it
+    runs on someone else's board. `se` is one number for all models or one per model.
+    """
+    n = len(scores)
+    if n < 2:
+        raise ValueError("selection_audit needs at least two models")
+    ses = [float(se)] * n if isinstance(se, (int, float)) else [float(x) for x in se]
+    if len(ses) != n:
+        raise ValueError(f"got {n} scores but {len(ses)} standard errors")
+    if any(s < 0 for s in ses):
+        raise ValueError("standard errors cannot be negative")
+
+    truth = [float(s) for s in scores]
+    best = max(range(n), key=lambda i: truth[i])
+    top2 = sorted(truth, reverse=True)[:2]
+    gap = top2[0] - top2[1]
+    gap_in_se = gap / ses[best] if ses[best] > 0 else float("inf")
+
+    rng = random.Random(seed)
+    wrong = inflation = in_top = 0
+    k = min(top_k, n)
+    for _ in range(trials):
+        obs = [truth[i] + (rng.gauss(0.0, ses[i]) if ses[i] > 0 else 0.0) for i in range(n)]
+        win = max(range(n), key=lambda i: obs[i])
+        wrong += win != best
+        inflation += obs[win] - truth[win]
+        order = sorted(range(n), key=lambda i: obs[i], reverse=True)[:k]
+        in_top += best in order
+
+    p_wrong = wrong / trials
+    audit = SelectionAudit(n, round(gap, 6), round(gap_in_se, 4), round(p_wrong, 4),
+                           round(inflation / trials, 4), round(in_top / trials, 4), k, trials)
+    if gap_in_se >= 3:
+        audit.verdict = "REAL-#1: the leader is clear of its own measurement error"
+    elif p_wrong >= 0.5:
+        audit.verdict = "COIN-FLIP-#1: a rerun crowns a different model more often than not"
+    else:
+        audit.verdict = "THIN-#1: the leader usually survives a rerun, but not comfortably"
+    return audit
+
+
 def _significance_group(names, vecs, items, leader):
     """Models NOT separable from the leader by a paired McNemar test (p>0.05), leader first."""
     idx = {m: i for i, m in enumerate(names)}

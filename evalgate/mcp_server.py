@@ -184,6 +184,41 @@ def _as_fraction(x: float, name: str) -> float:
 
 
 @mcp.tool()
+def check_winners_curse(scores: list, standard_error, top_k: int = 5) -> dict:
+    """Whether an announced #1 is the BEST model or the LUCKIEST one, from published numbers alone.
+
+    Ranking selects on score, and score is ability plus measurement error; sorting cannot separate
+    them, so among close models the one that rises is disproportionately the one whose error pointed
+    up. Returns how often a rerun would crown someone else, how many points the winning score
+    overstates the winner, and the leader's margin in units of its own standard error.
+
+    Use when: someone claims "model X is #1 / SOTA" and you can see the scores and their error bars
+    but not the per-item results. `standard_error` is one number for the whole board or one per
+    model, in the same units as the scores. Needs no raw data, so it runs on someone else's board.
+    """
+    try:
+        a = L.selection_audit(scores, standard_error, top_k=top_k)
+    except Exception as e:
+        return {"error": str(e),
+                "hint": "pass at least two scores and a non-negative standard error in score units"}
+    return {
+        "verdict": a.verdict,
+        "n_models": a.n_models,
+        "gap": a.gap,
+        "gap_in_standard_errors": a.gap_in_se,
+        "p_announced_number_1_is_wrong": a.p_wrong_winner,
+        "winning_score_inflation": a.score_inflation,
+        f"p_true_best_within_top_{a.top_k}": a.p_true_best_in_top,
+        "trials": a.trials,
+        "recommendation": (
+            "Report a tie group, not a lone #1, and quote the score minus the inflation."
+            if a.p_wrong_winner >= 0.5 else
+            "Print the leader's gap in units of its own standard error next to the ranking."
+        ),
+    }
+
+
+@mcp.tool()
 def check_deployment_precision(tpr: float, fpr: float, prevalence: float) -> dict:
     """What a detector's PRECISION BECOMES where the target is rare. Give the operating point you
     will actually ship (tpr, fpr — % or 0-1) and the prevalence you expect in the field. Returns the

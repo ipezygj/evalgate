@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+from evalgate import leaderboard as lb
 from evalgate.leaderboard import (
     audit_matrix,
     audit_pairwise,
@@ -192,3 +193,52 @@ def test_format_ascii_strict():
     d = latent_dimensions(subs, n_perm=12)
     for text in (format_matrix(m), format_pairwise(b), format_dimensions(d)):
         text.encode("ascii")   # raises if any non-ASCII slipped in
+
+
+# --- selection_audit: the winner's curse from published numbers alone -------------
+
+def test_selection_audit_zero_noise_selects_nothing():
+    """With no measurement error there is nothing to get lucky about."""
+    a = lb.selection_audit([90, 80, 70], se=0, trials=200)
+    assert a.p_wrong_winner == 0.0
+    assert a.score_inflation == 0.0
+    assert a.gap_in_se == float("inf")
+
+
+def test_selection_audit_matches_closed_form_for_two_identical_models():
+    """Two models of equal ability: E[max] - truth is exactly sigma/sqrt(pi)."""
+    a = lb.selection_audit([50.0, 50.0], se=5, trials=8000, seed=1)
+    assert abs(a.score_inflation - 5 / math.sqrt(math.pi)) < 0.15
+    assert abs(a.p_wrong_winner - 0.5) < 0.05     # a coin flip, and it should say so
+    assert a.verdict.startswith("COIN-FLIP")
+
+
+def test_selection_audit_matches_blom_for_twenty_identical_models():
+    """Twenty tied models at sigma=5: inflation approaches sigma * E[max of 20 normals]."""
+    a = lb.selection_audit([50.0] * 20, se=5, trials=8000, seed=1)
+    assert abs(a.score_inflation - 9.35) < 0.4
+
+
+def test_selection_audit_calls_a_clear_leader_real():
+    """A leader many standard errors clear is not a selection artifact."""
+    a = lb.selection_audit([80.0, 60.0, 55.0], se=1.0, trials=500, seed=0)
+    assert a.p_wrong_winner == 0.0
+    assert a.verdict.startswith("REAL-#1")
+
+
+def test_selection_audit_inflation_grows_with_the_field():
+    """The curse is about how many errors competed, not how big any one of them is."""
+    small = lb.selection_audit([50.0] * 3, se=4, trials=4000, seed=2).score_inflation
+    large = lb.selection_audit([50.0] * 60, se=4, trials=4000, seed=2).score_inflation
+    assert large > small * 1.5
+
+
+def test_selection_audit_accepts_per_model_errors_and_rejects_bad_input():
+    a = lb.selection_audit([50.0, 49.0], se=[3.0, 1.0], trials=500, seed=0)
+    assert 0.0 < a.p_wrong_winner < 1.0
+    with pytest.raises(ValueError):
+        lb.selection_audit([50.0, 49.0], se=[3.0])
+    with pytest.raises(ValueError):
+        lb.selection_audit([50.0], se=1.0)
+    with pytest.raises(ValueError):
+        lb.selection_audit([50.0, 49.0], se=-1.0)
