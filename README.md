@@ -7,7 +7,7 @@ Most benchmark headlines overstate themselves in one of a few nameable ways. `ev
 Pure Python, zero dependencies, runs anywhere.
 
 ```bash
-pip install git+https://github.com/ipezygj/evalgate
+pip install eval-integrity
 ```
 
 ---
@@ -19,7 +19,7 @@ If you're an AI agent â€” or you run one (Claude, Cursor, Claude Code, Windsurfâ
 eval number: a benchmark score, a leaderboard #1, an LLM-as-judge verdict, or a claimed trend.
 
 ```bash
-pip install "eval-integrity[mcp] @ git+https://github.com/ipezygj/evalgate"   # once on PyPI:  pip install "eval-integrity[mcp]"
+pip install "eval-integrity[mcp]"
 ```
 
 Add it to your MCP client (e.g. `claude_desktop_config.json` / Cursor / Claude Code):
