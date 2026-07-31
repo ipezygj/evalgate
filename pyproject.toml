@@ -40,6 +40,7 @@ mcp = []
 Homepage = "https://ipezygj.github.io/eval-audit-site/"
 Book = "https://leanpub.com/measurednotbelieved"
 Source = "https://github.com/ipezygj/evalgate"
+Issues = "https://github.com/ipezygj/evalgate/issues"
 
 [project.scripts]
 evalgate = "evalgate.cli:main"
