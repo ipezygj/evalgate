@@ -9,7 +9,8 @@ name = "eval-integrity"
 version = "0.4.1"
 description = "Dependency-free statistical checks for AI eval claims (multiple-comparisons, judge-bias, resolution, fragility) — as a CLI and an MCP server an agent calls before trusting a benchmark number."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"   # the [mcp] extra pulls mcp>=1.2, which requires 3.10+;
+                             # a wider floor makes `uv sync` unsatisfiable on 3.9. Python 3.9 is EOL.
 license = { text = "MIT" }
 authors = [{ name = "Ilpo Vaatainen" }]
 keywords = [
