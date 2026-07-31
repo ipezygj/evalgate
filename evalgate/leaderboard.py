@@ -260,6 +260,65 @@ def selection_audit(scores: Sequence[float], se, top_k: int = 5,
     return audit
 
 
+@dataclass
+class ConstantBaseline:
+    """The floor a leaderboard is really being read against."""
+    answer: object            # the label that scores best by answering it every time
+    score: float              # what that constant scores under this key
+    chance: float             # what uniform guessing over the observed labels would score
+    n_items: int
+    n_labels: int
+    beats: int | None = None  # published entries the constant outscores (None if no scores given)
+    n_entries: int | None = None
+    below_chance: int | None = None
+    verdict: str = ""
+
+
+def constant_baseline(key: Sequence, scores: Sequence[float] | None = None) -> ConstantBaseline:
+    """The best fixed answer under this answer key, and how much of the board it outscores.
+
+    Multiple-choice keys are written by people, and people do not spread the correct option
+    evenly. The floor of a benchmark is therefore not 1/n_labels — it is the frequency of the
+    most common correct label, which can sit far above chance. Entries below that line are not
+    measuring the skill the table is named after.
+
+    `key` is the correct label per item (any hashable — "A", 3, True). `scores` are the
+    published accuracies, in the same 0-1 units, if you want the comparison too.
+    """
+    items = list(key)
+    if not items:
+        raise ValueError("constant_baseline needs a non-empty answer key")
+    counts = {}
+    for label in items:
+        counts[label] = counts.get(label, 0) + 1
+    answer = max(counts, key=lambda k: (counts[k], str(k)))
+    n = len(items)
+    best = counts[answer] / n
+    chance = 1.0 / len(counts)
+
+    out = ConstantBaseline(answer, round(best, 6), round(chance, 6), n, len(counts))
+    if scores is not None:
+        sc = [float(x) for x in scores]
+        if not sc:
+            raise ValueError("scores was empty; pass None if there is no board to compare against")
+        out.n_entries = len(sc)
+        out.beats = sum(1 for x in sc if x < best)
+        out.below_chance = sum(1 for x in sc if x < chance)
+        share = out.beats / len(sc)
+        if share >= 0.5:
+            out.verdict = (f"FLOOR-DOMINATES: a fixed '{answer}' outscores {out.beats} of "
+                           f"{len(sc)} entries; most of this ordering is not measuring the skill")
+        elif out.beats:
+            out.verdict = (f"FLOOR-VISIBLE: a fixed '{answer}' outscores {out.beats} of "
+                           f"{len(sc)} entries — print it as a row, they are below the floor")
+        else:
+            out.verdict = f"CLEAR: every entry beats the best constant ({best:.4f})"
+    else:
+        out.verdict = (f"best constant is '{answer}' at {best:.4f}, "
+                       f"{best - chance:+.4f} above uniform guessing")
+    return out
+
+
 def _significance_group(names, vecs, items, leader):
     """Models NOT separable from the leader by a paired McNemar test (p>0.05), leader first."""
     idx = {m: i for i, m in enumerate(names)}

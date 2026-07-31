@@ -184,6 +184,40 @@ def _as_fraction(x: float, name: str) -> float:
 
 
 @mcp.tool()
+def check_constant_baseline(answer_key: list, scores: list | None = None) -> dict:
+    """The FLOOR a multiple-choice benchmark is really read against, and who scores below it.
+
+    Answer keys are written by people, and people do not spread the correct option evenly — so the
+    floor is not 1/n_options, it is the frequency of the most common correct label. Answering that
+    label to every question, reading nothing, is the true baseline. Entries below it are not
+    measuring the skill the table is named after.
+
+    Use when: a leaderboard ranks models on a multiple-choice benchmark and you have the answer key
+    (correct label per item). Pass `scores` (published accuracies, 0-1) to also learn how many
+    entries the constant outscores. On HELM classic's MMLU college_chemistry this returns 'D' at
+    0.4100 against a 0.2633 board median.
+    """
+    try:
+        a = L.constant_baseline(answer_key, scores)
+    except Exception as e:
+        return {"error": str(e), "hint": "answer_key is the correct label per item; scores are 0-1 accuracies"}
+    out = {
+        "verdict": a.verdict,
+        "best_constant_answer": a.answer,
+        "constant_scores": a.score,
+        "uniform_guessing_would_score": a.chance,
+        "n_items": a.n_items,
+        "n_labels": a.n_labels,
+        "recommendation": "Print the best constant baseline as a row above the models — not chance, this number.",
+    }
+    if a.beats is not None:
+        out.update({"entries_beaten_by_the_constant": a.beats,
+                    "n_entries": a.n_entries,
+                    "entries_below_uniform_chance": a.below_chance})
+    return out
+
+
+@mcp.tool()
 def check_winners_curse(scores: list, standard_error, top_k: int = 5) -> dict:
     """Whether an announced #1 is the BEST model or the LUCKIEST one, from published numbers alone.
 

@@ -253,3 +253,50 @@ def test_selection_audit_tie_verdict_does_not_hinge_on_sampling_noise():
     verdicts = {lb.selection_audit([50.0, 50.0], se=5, trials=600, seed=s).verdict.split(":")[0]
                 for s in range(6)}
     assert verdicts == {"COIN-FLIP-#1"}, f"verdict flipped with the seed: {verdicts}"
+
+
+# --- constant_baseline: the floor a board is really read against ------------------
+
+def test_constant_baseline_finds_the_skewed_label():
+    """A key where D is right on 41 of 100 items gives a 0.41 floor, not 0.25."""
+    key = ["D"] * 41 + ["A"] * 22 + ["B"] * 22 + ["C"] * 15
+    a = lb.constant_baseline(key)
+    assert a.answer == "D"
+    assert a.score == 0.41
+    assert a.chance == 0.25
+    assert a.n_items == 100 and a.n_labels == 4
+
+
+def test_constant_baseline_on_a_uniform_key_equals_chance():
+    a = lb.constant_baseline(["A", "B", "C", "D"] * 25)
+    assert a.score == a.chance == 0.25
+
+
+def test_constant_baseline_counts_what_it_beats():
+    key = ["D"] * 41 + ["A"] * 22 + ["B"] * 22 + ["C"] * 15
+    a = lb.constant_baseline(key, scores=[0.4733, 0.30, 0.28, 0.24, 0.22, 0.21])
+    assert a.beats == 5 and a.n_entries == 6
+    assert a.below_chance == 3          # 0.24, 0.22, 0.21 are under 0.25
+    assert a.verdict.startswith("FLOOR-DOMINATES")
+
+
+def test_constant_baseline_says_clear_when_every_entry_beats_the_floor():
+    key = ["D"] * 41 + ["A"] * 59
+    a = lb.constant_baseline(key, scores=[0.9, 0.8, 0.7])
+    assert a.beats == 0
+    assert a.verdict.startswith("CLEAR")
+
+
+def test_constant_baseline_accepts_non_string_labels_and_rejects_empty():
+    a = lb.constant_baseline([1, 1, 1, 2], scores=[0.5])
+    assert a.answer == 1 and a.score == 0.75
+    with pytest.raises(ValueError):
+        lb.constant_baseline([])
+    with pytest.raises(ValueError):
+        lb.constant_baseline(["A", "B"], scores=[])
+
+
+def test_constant_baseline_tie_between_labels_is_deterministic():
+    """Two labels tied at the top must not depend on dict ordering."""
+    picks = {lb.constant_baseline(["B", "A", "B", "A"]).answer for _ in range(5)}
+    assert picks == {"B"}, f"tie-break drifted: {picks}"

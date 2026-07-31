@@ -3,6 +3,17 @@
 All notable changes to `evalgate`. Format loosely follows [Keep a Changelog](https://keepachangelog.com/);
 this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.0]
+
+### Added — the floor a leaderboard is really read against
+- `evalgate.leaderboard.constant_baseline(key, scores=None)` and MCP tool `check_constant_baseline`.
+  Multiple-choice answer keys are written by people, and people do not spread the correct option
+  evenly, so a benchmark's floor is not 1/n_options — it is the frequency of the most common correct
+  label. Returns that label, what answering it to everything scores, and how many published entries
+  it outscores. On HELM classic's MMLU college_chemistry: `D` at **0.4100** against a 0.2633 board
+  median, beating 22 of 29 runs, with 11 runs below the 0.2500 a coin flip would earn.
+- Ties between labels break deterministically, so the answer does not depend on dict ordering.
+
 ## [0.5.0]
 
 ### Added — the winner's curse, from published numbers alone
