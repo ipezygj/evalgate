@@ -17,12 +17,26 @@ README = ROOT / "README.md"
 
 
 def _tools():
+    """Take the first `def` after each decorator.
+
+    A pattern like `@mcp.tool\\([^)]*\\)` stops at the first paren inside
+    `annotations=_ann(...)` and matches nothing. That exact mistake made a sweep of
+    the sibling repos print "0 tools, none undocumented", which reads like an
+    all-clear. This shape survives arguments in the decorator.
+    """
     src = SERVER.read_text(encoding="utf-8")
-    return sorted(set(re.findall(r"@mcp\.tool\(\)\s*\ndef (\w+)", src)))
+    found = []
+    for chunk in src.split("@mcp.tool")[1:]:
+        m = re.search(r"\ndef (\w+)\(", chunk)
+        if m:
+            found.append(m.group(1))
+    return sorted(set(found))
 
 
-def test_there_are_tools_to_document():
-    assert _tools(), "no @mcp.tool() functions found — did the decorator change?"
+def test_the_parser_finds_tools_at_all():
+    """Guards the guard: a parser that matches nothing passes every test below."""
+    tools = _tools()
+    assert len(tools) >= 10, f"only {len(tools)} tools found — the decorator shape probably changed"
 
 
 @pytest.mark.parametrize("tool", _tools())
